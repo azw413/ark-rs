@@ -406,16 +406,24 @@ pub enum AbcLiteralValue {
     String(u32),
     Type(u32),
     Method(u32),
+    GeneratorMethod(u32),
+    AsyncGeneratorMethod(u32),
     MethodAffiliate(u16),
     Builtin(u8),
+    BuiltinTypeIndex(u8),
     Accessor(u8),
+    Getter(u32),
+    Setter(u32),
     LiteralArray(u32),
+    LiteralBufferIndex(u32),
+    EtsImplements(u32),
     BigInt(Vec<u8>),
     BigIntExternal { length: u32 },
     Any { type_index: u32, data: Vec<u8> },
     AnyExternal { type_index: u32, length: u32 },
     Null,
     Undefined,
+    TagValue(u8),
     Raw { tag: u8, bytes: Vec<u8> },
 }
 
@@ -423,6 +431,7 @@ pub enum AbcLiteralValue {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AbcLiteralArray {
     pub offset: u32,
+    pub byte_len: usize,
     pub entries: Vec<AbcLiteralValue>,
 }
 
@@ -430,18 +439,28 @@ impl AbcLiteralArray {
     pub fn read_at(reader: &mut AbcReader<'_>, offset: u32) -> ArkResult<Self> {
         let saved = reader.position();
         reader.seek(offset as usize)?;
-        let count = reader.read_u32()?;
-        let mut entries = Vec::with_capacity(count as usize);
-        for _ in 0..count {
+
+        let raw_count = reader.read_u32()?;
+        let mut entries = Vec::new();
+        let mut processed_pairs: u32 = 0;
+
+        while processed_pairs < raw_count {
             let tag = reader.read_u8()?;
+            processed_pairs = processed_pairs.saturating_add(2);
+
             let value = match tag {
+                0x00 => {
+                    let actual = reader.read_u8()?;
+                    AbcLiteralValue::TagValue(actual)
+                }
                 0x01 => AbcLiteralValue::Boolean(reader.read_u8()? != 0),
                 0x02 => AbcLiteralValue::Integer(reader.read_u32()? as i32 as i64),
                 0x03 => AbcLiteralValue::Float(f32::from_bits(reader.read_u32()?)),
                 0x04 => AbcLiteralValue::Double(f64::from_bits(reader.read_u64()?)),
                 0x05 => AbcLiteralValue::String(reader.read_u32()?),
-                0x06 | 0x07 | 0x16 => AbcLiteralValue::Method(reader.read_u32()?),
-                0x08 | 0x19 => AbcLiteralValue::Builtin(reader.read_u8()?),
+                0x06 => AbcLiteralValue::Method(reader.read_u32()?),
+                0x07 => AbcLiteralValue::GeneratorMethod(reader.read_u32()?),
+                0x08 => AbcLiteralValue::Accessor(reader.read_u8()?),
                 0x09 => AbcLiteralValue::MethodAffiliate(reader.read_u16()?),
                 0x0a => {
                     let type_index = reader.read_u32()?;
@@ -456,39 +475,52 @@ impl AbcLiteralArray {
                         AbcLiteralValue::Any { type_index, data }
                     }
                 }
-                0x0b => AbcLiteralValue::Undefined,
-                0x0c => {
-                    let len = reader.read_u32_be()? as usize;
-                    if len > reader.remaining() {
-                        AbcLiteralValue::BigIntExternal { length: len as u32 }
-                    } else {
-                        let bytes = reader.read_bytes(len)?.to_vec();
-                        AbcLiteralValue::BigInt(bytes)
-                    }
+                0x0b..=0x15 => {
+                    let length = reader.read_u32()?;
+                    let elem_size = match tag {
+                        0x0b => ((length as usize) + 7) / 8,
+                        0x0c | 0x0d => length as usize,
+                        0x0e | 0x0f => (length as usize).saturating_mul(2),
+                        0x10 | 0x11 | 0x13 => (length as usize).saturating_mul(4),
+                        0x12 | 0x14 | 0x15 => (length as usize).saturating_mul(8),
+                        _ => length as usize,
+                    };
+                    let mut bytes = Vec::with_capacity(4 + elem_size);
+                    bytes.extend_from_slice(&length.to_le_bytes());
+                    bytes.extend_from_slice(reader.read_bytes(elem_size)?);
+                    processed_pairs = raw_count;
+                    AbcLiteralValue::Raw { tag, bytes }
                 }
-                0x10 => AbcLiteralValue::Type(reader.read_u32()?),
+                0x16 => AbcLiteralValue::AsyncGeneratorMethod(reader.read_u32()?),
+                0x17 => AbcLiteralValue::LiteralBufferIndex(reader.read_u32()?),
                 0x18 => AbcLiteralValue::LiteralArray(reader.read_u32()?),
-                0x1a | 0x1b => AbcLiteralValue::Accessor(reader.read_u8()?),
+                0x19 => AbcLiteralValue::BuiltinTypeIndex(reader.read_u8()?),
+                0x1a => AbcLiteralValue::Getter(reader.read_u32()?),
+                0x1b => AbcLiteralValue::Setter(reader.read_u32()?),
+                0x1c => AbcLiteralValue::EtsImplements(reader.read_u32()?),
                 0xff => {
-                    let v = reader.read_u8()?;
-                    if v == 0 {
-                        AbcLiteralValue::Null
-                    } else {
-                        AbcLiteralValue::Builtin(v)
-                    }
+                    let _ = reader.read_u8()?;
+                    AbcLiteralValue::Null
                 }
                 other => {
-                    // Most extended literal tags observed so far carry a 32-bit payload.
-                    // Preserve the bytes verbatim so downstream tooling can experiment
-                    // without losing information.
-                    let bytes = reader.read_bytes(4)?.to_vec();
+                    let len = core::cmp::min(4, reader.remaining());
+                    let bytes = reader.read_bytes(len)?.to_vec();
                     AbcLiteralValue::Raw { tag: other, bytes }
                 }
             };
-            entries.push(value);
+
+            if !matches!(value, AbcLiteralValue::TagValue(_)) {
+                entries.push(value);
+            }
         }
+
+        let end_pos = reader.position();
         reader.seek(saved)?;
-        Ok(AbcLiteralArray { offset, entries })
+        Ok(AbcLiteralArray {
+            offset,
+            byte_len: end_pos.saturating_sub(offset as usize),
+            entries,
+        })
     }
 }
 
@@ -502,16 +534,24 @@ impl AbcLiteralValue {
             AbcLiteralValue::String(_) => 4,
             AbcLiteralValue::Type(_) => 4,
             AbcLiteralValue::Method(_) => 4,
+            AbcLiteralValue::GeneratorMethod(_) => 4,
+            AbcLiteralValue::AsyncGeneratorMethod(_) => 4,
             AbcLiteralValue::MethodAffiliate(_) => 2,
             AbcLiteralValue::Builtin(_) => 1,
+            AbcLiteralValue::BuiltinTypeIndex(_) => 1,
             AbcLiteralValue::Accessor(_) => 1,
+            AbcLiteralValue::Getter(_) => 4,
+            AbcLiteralValue::Setter(_) => 4,
             AbcLiteralValue::LiteralArray(_) => 4,
+            AbcLiteralValue::LiteralBufferIndex(_) => 4,
+            AbcLiteralValue::EtsImplements(_) => 4,
             AbcLiteralValue::BigInt(bytes) => 4 + bytes.len(),
             AbcLiteralValue::BigIntExternal { .. } => 4,
             AbcLiteralValue::Any { data, .. } => 8 + data.len(),
             AbcLiteralValue::AnyExternal { .. } => 8,
-            AbcLiteralValue::Null => 0,
+            AbcLiteralValue::Null => 1,
             AbcLiteralValue::Undefined => 0,
+            AbcLiteralValue::TagValue(_) => 1,
             AbcLiteralValue::Raw { bytes, .. } => bytes.len(),
         }
     }
@@ -696,7 +736,7 @@ mod tests {
         let bytes = std::fs::read("test-data/modules.abc")?;
         let mut reader = AbcReader::new(&bytes);
         let literal = AbcLiteralArray::read_at(&mut reader, 0x1812)?;
-        assert_eq!(literal.entries.len(), 6);
+        assert_eq!(literal.entries.len(), 3);
         Ok(())
     }
 

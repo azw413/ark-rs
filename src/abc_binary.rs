@@ -57,7 +57,7 @@ impl BinaryAbcFile {
         } else {
             None
         };
-        let (literal_offsets, literal_arrays) = {
+        let (mut literal_offsets, mut literal_arrays) = {
             let region_start = index_header
                 .as_ref()
                 .map(|idx| idx.start as usize)
@@ -80,17 +80,17 @@ impl BinaryAbcFile {
                 }
                 match AbcLiteralArray::read_at(&mut reader, cursor as u32) {
                     Ok(array) => {
-                        let size = 4 + array
-                            .entries
-                            .iter()
-                            .map(AbcLiteralValue::encoded_size)
-                            .sum::<usize>();
-                        if cursor + size > region_end || cursor + size > data.len() {
+                        let size = array.byte_len;
+                        if size == 0 || cursor + size > region_end || cursor + size > data.len() {
                             cursor += 1;
                             continue;
                         }
                         offsets.push(cursor as u32);
-                        arrays.push(Some(array));
+                        if array.entries.is_empty() {
+                            arrays.push(None);
+                        } else {
+                            arrays.push(Some(array));
+                        }
                         cursor += size;
                     }
                     Err(_) => {
@@ -100,6 +100,44 @@ impl BinaryAbcFile {
             }
             (offsets, arrays)
         };
+        let mut known_offsets: std::collections::HashSet<u32> =
+            literal_offsets.iter().copied().collect();
+        let mut queue = std::collections::VecDeque::new();
+        for maybe_array in &literal_arrays {
+            if let Some(array) = maybe_array {
+                for entry in &array.entries {
+                    if let AbcLiteralValue::LiteralArray(target) = entry {
+                        if known_offsets.insert(*target) {
+                            queue.push_back(*target);
+                        }
+                    }
+                }
+            }
+        }
+        let mut pairs: Vec<(u32, Option<AbcLiteralArray>)> = literal_offsets
+            .iter()
+            .cloned()
+            .zip(literal_arrays.into_iter())
+            .collect();
+        process_literal_queue(&data, &mut queue, &mut known_offsets, &mut pairs);
+        let region_start_u32 = index_header.as_ref().map(|idx| idx.start).unwrap_or(0);
+        let region_end_u32 = index_header
+            .as_ref()
+            .map(|idx| idx.end)
+            .unwrap_or(data.len() as u32);
+        for pos in 0..data.len().saturating_sub(4) {
+            let candidate = u32::from_le_bytes(data[pos..pos + 4].try_into().unwrap());
+            if candidate < region_start_u32 || candidate >= region_end_u32 {
+                continue;
+            }
+            if known_offsets.insert(candidate) {
+                queue.push_back(candidate);
+            }
+        }
+        process_literal_queue(&data, &mut queue, &mut known_offsets, &mut pairs);
+        pairs.sort_by_key(|(offset, _)| *offset);
+        literal_offsets = pairs.iter().map(|(offset, _)| *offset).collect();
+        literal_arrays = pairs.into_iter().map(|(_, array)| array).collect();
         let method_index = if let Some(index_header) = &index_header {
             if index_header.method_index_offset == u32::MAX {
                 Vec::new()
@@ -234,14 +272,10 @@ impl BinaryAbcFile {
         file.segments.push(AbcSegment::Raw("# LITERALS".to_owned()));
         file.segments
             .push(AbcSegment::Raw("# ===================".to_owned()));
-        for (index, (offset, entry)) in self
-            .literal_offsets
-            .iter()
-            .zip(self.literal_arrays.iter())
-            .enumerate()
-        {
+        let mut display_index = 0usize;
+        for (offset, entry) in self.literal_offsets.iter().zip(self.literal_arrays.iter()) {
             let (body, lines) = match entry {
-                Some(array) => {
+                Some(array) if self.should_render_literal(&array.entries) => {
                     let items = array
                         .entries
                         .iter()
@@ -253,19 +287,24 @@ impl BinaryAbcFile {
                         format!(" {}", items.join(" "))
                     };
                     let line = format!(
-                        "{index} 0x{offset:04x} {{ {} [{} ]}}",
+                        "{} 0x{offset:04x} {{ {} [{} ]}}",
+                        display_index,
                         array.entries.len(),
                         rendered
                     );
                     (line.clone(), vec![line])
                 }
-                None => {
-                    let line = format!("{index} 0x{offset:04x} {{ <unresolved> }}");
-                    (line.clone(), vec![line])
-                }
+                Some(_) => continue,
+                None => match self.render_module_literal(display_index, *offset) {
+                    Some(result) => result,
+                    None => {
+                        let line = format!("{} 0x{offset:04x} {{ <unresolved> }}", display_index);
+                        (line.clone(), vec![line])
+                    }
+                },
             };
             file.literals.push(LiteralEntry {
-                index: index as u32,
+                index: display_index as u32,
                 offset: *offset,
                 body: body.clone(),
                 lines,
@@ -273,6 +312,7 @@ impl BinaryAbcFile {
             let lit_idx = file.literals.len() - 1;
             file.segments.push(AbcSegment::Literal(lit_idx));
             file.segments.push(AbcSegment::Raw(String::new()));
+            display_index += 1;
         }
         file.segments.push(AbcSegment::Raw(String::new()));
         file.segments
@@ -334,6 +374,149 @@ impl BinaryAbcFile {
             .ok()
             .map(|entry| entry.value)
     }
+    fn should_render_literal(&self, entries: &[AbcLiteralValue]) -> bool {
+        entries.iter().any(|entry| {
+            !matches!(
+                entry,
+                AbcLiteralValue::Raw { .. } | AbcLiteralValue::TagValue(_)
+            )
+        })
+    }
+
+    fn render_module_literal(&self, index: usize, offset: u32) -> Option<(String, Vec<String>)> {
+        let module = self.parse_module_literal(offset)?;
+        let mut lines = Vec::new();
+        lines.push(format!(
+            "{} 0x{offset:04x} {{ {} [",
+            index,
+            module.records.len()
+        ));
+        lines.push("\tMODULE_REQUEST_ARRAY: {".to_owned());
+        for (idx, request) in module.requests.iter().enumerate() {
+            lines.push(format!("\t\t{} : {},", idx, request));
+        }
+        lines.push("\t};".to_owned());
+        for record in module.records {
+            let mut parts = Vec::new();
+            parts.push(format!("ModuleTag: {}", record.tag));
+            if let Some(local) = record.local_name {
+                parts.push(format!("local_name: {}", local));
+            }
+            if let Some(export) = record.export_name {
+                parts.push(format!("export_name: {}", export));
+            }
+            if let Some(import) = record.import_name {
+                parts.push(format!("import_name: {}", import));
+            }
+            if let Some(request) = record.module_request {
+                parts.push(format!("module_request: {}", request));
+            }
+            lines.push(format!("\t{};", parts.join(", ")));
+        }
+        lines.push("]}".to_owned());
+        let body = lines.join("\n");
+        Some((body, lines))
+    }
+
+    fn parse_module_literal(&self, offset: u32) -> Option<ModuleLiteralDisplay> {
+        let mut reader = AbcReader::new(&self.data);
+        reader.seek(offset as usize).ok()?;
+        let _literal_count = reader.read_u32().ok()?;
+
+        let request_count = reader.read_u32().ok()? as usize;
+        let mut requests = Vec::with_capacity(request_count);
+        for _ in 0..request_count {
+            let str_offset = reader.read_u32().ok()?;
+            let value = self
+                .resolve_string(str_offset)
+                .unwrap_or_else(|| format!("@0x{str_offset:04x}"));
+            requests.push(value);
+        }
+
+        let mut records = Vec::new();
+
+        let regular_imports = reader.read_u32().ok()? as usize;
+        for _ in 0..regular_imports {
+            let local_name = self
+                .resolve_string(reader.read_u32().ok()?)
+                .unwrap_or_else(|| "<local>".to_owned());
+            let import_name = self
+                .resolve_string(reader.read_u32().ok()?)
+                .unwrap_or_else(|| "<import>".to_owned());
+            let module_idx = reader.read_u16().ok()? as usize;
+            records.push(ModuleRecordDisplay {
+                tag: "REGULAR_IMPORT",
+                local_name: Some(local_name),
+                export_name: None,
+                import_name: Some(import_name),
+                module_request: requests.get(module_idx).cloned(),
+            });
+        }
+
+        let namespace_imports = reader.read_u32().ok()? as usize;
+        for _ in 0..namespace_imports {
+            let local_name = self
+                .resolve_string(reader.read_u32().ok()?)
+                .unwrap_or_else(|| "<local>".to_owned());
+            let module_idx = reader.read_u16().ok()? as usize;
+            records.push(ModuleRecordDisplay {
+                tag: "NAMESPACE_IMPORT",
+                local_name: Some(local_name),
+                export_name: None,
+                import_name: None,
+                module_request: requests.get(module_idx).cloned(),
+            });
+        }
+
+        let local_exports = reader.read_u32().ok()? as usize;
+        for _ in 0..local_exports {
+            let local_name = self
+                .resolve_string(reader.read_u32().ok()?)
+                .unwrap_or_else(|| "<local>".to_owned());
+            let export_name = self
+                .resolve_string(reader.read_u32().ok()?)
+                .unwrap_or_else(|| "<export>".to_owned());
+            records.push(ModuleRecordDisplay {
+                tag: "LOCAL_EXPORT",
+                local_name: Some(local_name),
+                export_name: Some(export_name),
+                import_name: None,
+                module_request: None,
+            });
+        }
+
+        let indirect_exports = reader.read_u32().ok()? as usize;
+        for _ in 0..indirect_exports {
+            let export_name = self
+                .resolve_string(reader.read_u32().ok()?)
+                .unwrap_or_else(|| "<export>".to_owned());
+            let import_name = self
+                .resolve_string(reader.read_u32().ok()?)
+                .unwrap_or_else(|| "<import>".to_owned());
+            let module_idx = reader.read_u16().ok()? as usize;
+            records.push(ModuleRecordDisplay {
+                tag: "INDIRECT_EXPORT",
+                local_name: None,
+                export_name: Some(export_name),
+                import_name: Some(import_name),
+                module_request: requests.get(module_idx).cloned(),
+            });
+        }
+
+        let star_exports = reader.read_u32().ok()? as usize;
+        for _ in 0..star_exports {
+            let module_idx = reader.read_u16().ok()? as usize;
+            records.push(ModuleRecordDisplay {
+                tag: "STAR_EXPORT",
+                local_name: None,
+                export_name: None,
+                import_name: None,
+                module_request: requests.get(module_idx).cloned(),
+            });
+        }
+
+        Some(ModuleLiteralDisplay { requests, records })
+    }
     fn render_literal_value(&self, value: &AbcLiteralValue) -> String {
         match value {
             AbcLiteralValue::Boolean(v) => {
@@ -342,7 +525,7 @@ impl BinaryAbcFile {
             AbcLiteralValue::Integer(v) => format!("i32:{v}"),
             AbcLiteralValue::Float(v) => format!("f32:{v}"),
             AbcLiteralValue::Double(v) => format!("f64:{v}"),
-            AbcLiteralValue::String(index) => {
+            AbcLiteralValue::String(index) | AbcLiteralValue::EtsImplements(index) => {
                 if let Some(value) = self.resolve_string(*index) {
                     let normalized = if value.starts_with('L') && value.ends_with(';') {
                         normalize_record_name(&value)
@@ -355,13 +538,25 @@ impl BinaryAbcFile {
                 }
             }
             AbcLiteralValue::Type(index) => format!("type_id:{}", index),
-            AbcLiteralValue::Method(index) => format!("method:0x{index:04x}"),
+            AbcLiteralValue::Method(index) => self.render_method_literal("method", *index),
+            AbcLiteralValue::GeneratorMethod(index) => {
+                self.render_method_literal("generator_method", *index)
+            }
+            AbcLiteralValue::AsyncGeneratorMethod(index) => {
+                self.render_method_literal("async_generator_method", *index)
+            }
             AbcLiteralValue::MethodAffiliate(idx) => {
                 format!("method_affiliate:{}", idx)
             }
             AbcLiteralValue::Builtin(code) => format!("builtin:{}", code),
+            AbcLiteralValue::BuiltinTypeIndex(code) => format!("builtin_type:{}", code),
             AbcLiteralValue::Accessor(code) => format!("accessor:{}", code),
+            AbcLiteralValue::Getter(index) => self.render_method_literal("getter", *index),
+            AbcLiteralValue::Setter(index) => self.render_method_literal("setter", *index),
             AbcLiteralValue::LiteralArray(index) => format!("literal_array:0x{index:04x}"),
+            AbcLiteralValue::LiteralBufferIndex(index) => {
+                format!("literal_buffer:0x{index:04x}")
+            }
             AbcLiteralValue::BigInt(bytes) => format!("bigint(len={})", bytes.len()),
             AbcLiteralValue::BigIntExternal { length } => {
                 format!("bigint_external(len={length})")
@@ -374,12 +569,84 @@ impl BinaryAbcFile {
             }
             AbcLiteralValue::Null => "null_value:0".to_owned(),
             AbcLiteralValue::Undefined => "undefined".to_owned(),
+            AbcLiteralValue::TagValue(tag) => format!("tag:0x{tag:02x}"),
             AbcLiteralValue::Raw { tag, bytes } => {
                 format!("raw(tag=0x{tag:02x}, len={})", bytes.len())
             }
         }
     }
+
+    fn render_method_literal(&self, kind: &str, code_offset: u32) -> String {
+        if let Some(name) = self.format_method_ref(code_offset) {
+            format!("{kind}:{name}")
+        } else {
+            format!("{kind}:0x{code_offset:04x}")
+        }
+    }
+
+    fn format_method_ref(&self, code_offset: u32) -> Option<String> {
+        self.method_index
+            .iter()
+            .find(|entry| entry.code_offset == code_offset)
+            .and_then(|entry| self.resolve_string(entry.name_offset))
+            .map(|name| {
+                if name.starts_with('#') {
+                    name
+                } else {
+                    normalize_method_name(&name)
+                }
+            })
+    }
 }
+
+#[derive(Debug, Clone)]
+struct ModuleLiteralDisplay {
+    requests: Vec<String>,
+    records: Vec<ModuleRecordDisplay>,
+}
+
+#[derive(Debug, Clone)]
+struct ModuleRecordDisplay {
+    tag: &'static str,
+    local_name: Option<String>,
+    export_name: Option<String>,
+    import_name: Option<String>,
+    module_request: Option<String>,
+}
+
+fn process_literal_queue(
+    data: &[u8],
+    queue: &mut std::collections::VecDeque<u32>,
+    known_offsets: &mut std::collections::HashSet<u32>,
+    pairs: &mut Vec<(u32, Option<AbcLiteralArray>)>,
+) {
+    while let Some(offset) = queue.pop_front() {
+        if pairs.iter().any(|(existing, _)| *existing == offset) {
+            continue;
+        }
+        let mut reader = AbcReader::new(data);
+        match AbcLiteralArray::read_at(&mut reader, offset) {
+            Ok(array) => {
+                if array.entries.is_empty() {
+                    pairs.push((offset, None));
+                } else {
+                    for entry in &array.entries {
+                        if let AbcLiteralValue::LiteralArray(inner) = entry {
+                            if known_offsets.insert(*inner) {
+                                queue.push_back(*inner);
+                            }
+                        }
+                    }
+                    pairs.push((offset, Some(array)));
+                }
+            }
+            Err(_) => {
+                known_offsets.remove(&offset);
+            }
+        }
+    }
+}
+
 fn convert_literal_value(value: &AbcLiteralValue) -> LiteralValue {
     match value {
         AbcLiteralValue::Boolean(v) => LiteralValue::Boolean(*v),
@@ -388,11 +655,19 @@ fn convert_literal_value(value: &AbcLiteralValue) -> LiteralValue {
         AbcLiteralValue::Double(v) => LiteralValue::Double(*v),
         AbcLiteralValue::String(index) => LiteralValue::String(StringId::new(*index)),
         AbcLiteralValue::Type(index) => LiteralValue::Type(TypeId::new(*index)),
-        AbcLiteralValue::Method(index) => LiteralValue::Method(FunctionId::new(*index)),
+        AbcLiteralValue::Method(index)
+        | AbcLiteralValue::GeneratorMethod(index)
+        | AbcLiteralValue::AsyncGeneratorMethod(index)
+        | AbcLiteralValue::Getter(index)
+        | AbcLiteralValue::Setter(index) => LiteralValue::Method(FunctionId::new(*index)),
         AbcLiteralValue::MethodAffiliate(idx) => LiteralValue::MethodAffiliate(*idx),
-        AbcLiteralValue::Builtin(code) => LiteralValue::Builtin(*code),
+        AbcLiteralValue::Builtin(code) | AbcLiteralValue::BuiltinTypeIndex(code) => {
+            LiteralValue::Builtin(*code)
+        }
         AbcLiteralValue::Accessor(code) => LiteralValue::Accessor(*code),
-        AbcLiteralValue::LiteralArray(index) => LiteralValue::LiteralArray(*index),
+        AbcLiteralValue::LiteralArray(index) | AbcLiteralValue::LiteralBufferIndex(index) => {
+            LiteralValue::LiteralArray(*index)
+        }
         AbcLiteralValue::BigInt(bytes) => LiteralValue::BigInt(bytes.clone()),
         AbcLiteralValue::BigIntExternal { length } => {
             LiteralValue::BigIntExternal { length: *length }
@@ -405,8 +680,13 @@ fn convert_literal_value(value: &AbcLiteralValue) -> LiteralValue {
             type_index: TypeId::new(*type_index),
             length: *length,
         },
+        AbcLiteralValue::EtsImplements(index) => LiteralValue::String(StringId::new(*index)),
         AbcLiteralValue::Null => LiteralValue::Null,
         AbcLiteralValue::Undefined => LiteralValue::Undefined,
+        AbcLiteralValue::TagValue(tag) => LiteralValue::Raw {
+            tag: 0x00,
+            bytes: vec![*tag],
+        },
         AbcLiteralValue::Raw { tag, bytes } => LiteralValue::Raw {
             tag: *tag,
             bytes: bytes.clone(),
@@ -514,12 +794,20 @@ mod tests {
         let bytes = std::fs::read("test-data/wechat.abc").expect("fixture");
         let abc = BinaryAbcFile::parse(&bytes).expect("parse binary abc");
         assert_eq!(abc.literal_offsets.len(), abc.literal_arrays.len());
-        assert!(
-            abc.literal_offsets
-                .iter()
-                .zip(abc.literal_arrays.iter())
-                .all(|(offset, maybe)| (*offset == 0) == maybe.is_none())
-        );
+        assert!(abc.literal_arrays.iter().any(|maybe| maybe.is_some()));
+    }
+
+    #[test]
+    fn list_modules_literal_offsets() {
+        let bytes = std::fs::read("test-data/modules.abc").expect("fixture");
+        let abc = BinaryAbcFile::parse(&bytes).expect("parse binary abc");
+        let collected: Vec<u32> = abc
+            .literal_offsets
+            .iter()
+            .copied()
+            .filter(|offset| *offset != 0)
+            .collect();
+        assert!(!collected.is_empty());
     }
     #[test]
     fn dump_modules_disassembly() {
