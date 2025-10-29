@@ -10,7 +10,6 @@ use crate::file::{ArkBytecodeFile, SectionOffsets};
 use crate::header::{Endianness, FileFlags, FileHeader, FileVersion, ModuleKind};
 use crate::types::{FunctionId, StringId, TypeDescriptor, TypeId};
 use std::collections::HashMap;
-
 /// In-memory representation of a decoded binary ABC module focusing on class metadata.
 #[derive(Debug, Clone)]
 pub struct BinaryAbcFile {
@@ -23,31 +22,26 @@ pub struct BinaryAbcFile {
     pub method_index: Vec<MethodIndexEntry>,
     data: Vec<u8>,
 }
-
 #[derive(Debug, Clone, Copy)]
 pub struct MethodIndexEntry {
     pub name_offset: u32,
     pub code_offset: u32,
 }
-
 impl BinaryAbcFile {
     /// Parses a raw `.abc` binary buffer into a [`BinaryAbcFile`].
     pub fn parse(bytes: &[u8]) -> ArkResult<Self> {
         let data = bytes.to_vec();
         let mut reader = AbcReader::new(&data);
         let header = AbcHeader::read(&mut reader)?;
-
         if header.class_index_offset as usize + (header.class_count as usize * 4) > data.len() {
             return Err(ArkError::format("class index table exceeds file length"));
         }
-
         let mut index_reader = AbcReader::new(&data);
         index_reader.seek(header.class_index_offset as usize)?;
         let mut class_offsets = Vec::with_capacity(header.class_count as usize);
         for _ in 0..header.class_count {
             class_offsets.push(index_reader.read_u32()?);
         }
-
         let mut classes = Vec::with_capacity(class_offsets.len());
         for offset in &class_offsets {
             if *offset == 0 {
@@ -56,7 +50,6 @@ impl BinaryAbcFile {
             let class = AbcClassDefinition::read_at(&mut reader, *offset)?;
             classes.push(class);
         }
-
         let index_header = if header.index_count > 0 && header.index_section_offset != u32::MAX {
             let mut idx_reader = AbcReader::new(&data);
             idx_reader.seek(header.index_section_offset as usize)?;
@@ -64,39 +57,49 @@ impl BinaryAbcFile {
         } else {
             None
         };
-
-        let (literal_offsets, literal_arrays) =
-            if header.literal_array_count == 0 || header.literal_array_index_offset == u32::MAX {
-                (Vec::new(), Vec::new())
-            } else {
-                let literal_index_offset = header.literal_array_index_offset as usize;
-                let literal_count = header.literal_array_count as usize;
-                if literal_index_offset > data.len()
-                    || literal_index_offset + literal_count.saturating_mul(4) > data.len()
-                {
-                    return Err(ArkError::format("literal index table exceeds file length"));
+        let (literal_offsets, literal_arrays) = {
+            let region_start = index_header
+                .as_ref()
+                .map(|idx| idx.start as usize)
+                .unwrap_or(0);
+            let region_end = index_header
+                .as_ref()
+                .map(|idx| idx.end as usize)
+                .unwrap_or(data.len());
+            let mut offsets = Vec::new();
+            let mut arrays = Vec::new();
+            let mut cursor = region_start;
+            while cursor < region_end {
+                if cursor + 4 > data.len() {
+                    break;
                 }
-
-                let mut literal_index_reader = AbcReader::new(&data);
-                literal_index_reader.seek(literal_index_offset)?;
-                let mut literal_offsets = Vec::with_capacity(literal_count);
-                for _ in 0..literal_count {
-                    literal_offsets.push(literal_index_reader.read_u32()?);
+                let count = u32::from_le_bytes(data[cursor..cursor + 4].try_into().unwrap());
+                if count == 0 || count > 0x100 {
+                    cursor += 1;
+                    continue;
                 }
-
-                let mut literal_arrays = Vec::with_capacity(literal_offsets.len());
-                for offset in &literal_offsets {
-                    if *offset == 0 {
-                        literal_arrays.push(None);
-                        continue;
+                match AbcLiteralArray::read_at(&mut reader, cursor as u32) {
+                    Ok(array) => {
+                        let size = 4 + array
+                            .entries
+                            .iter()
+                            .map(AbcLiteralValue::encoded_size)
+                            .sum::<usize>();
+                        if cursor + size > region_end || cursor + size > data.len() {
+                            cursor += 1;
+                            continue;
+                        }
+                        offsets.push(cursor as u32);
+                        arrays.push(Some(array));
+                        cursor += size;
                     }
-                    let array = AbcLiteralArray::read_at(&mut reader, *offset)?;
-                    literal_arrays.push(Some(array));
+                    Err(_) => {
+                        cursor += 1;
+                    }
                 }
-
-                (literal_offsets, literal_arrays)
-            };
-
+            }
+            (offsets, arrays)
+        };
         let method_index = if let Some(index_header) = &index_header {
             if index_header.method_index_offset == u32::MAX {
                 Vec::new()
@@ -123,7 +126,6 @@ impl BinaryAbcFile {
         } else {
             Vec::new()
         };
-
         Ok(BinaryAbcFile {
             header,
             class_offsets,
@@ -135,7 +137,6 @@ impl BinaryAbcFile {
             data,
         })
     }
-
     /// Converts the binary representation into the existing high level [`ArkBytecodeFile`]
     /// structure. The translation currently focuses on recreating class declarations and
     /// populating the constant pool with their descriptors.
@@ -153,11 +154,9 @@ impl BinaryAbcFile {
         header.checksum = self.header.checksum;
         header.file_size = self.header.file_size;
         header.section_count = self.header.index_count as u16;
-
         let mut constant_pool = ConstantPool::default();
         let mut string_records: Vec<StringRecord> = Vec::new();
         let mut string_ids: HashMap<String, StringId> = HashMap::new();
-
         // Reserve a placeholder language id.
         let language_string = "unknown".to_string();
         string_records.push(StringRecord {
@@ -165,10 +164,8 @@ impl BinaryAbcFile {
             value: language_string.clone(),
         });
         string_ids.insert(language_string, StringId::new(0));
-
         let mut type_descriptors: Vec<TypeDescriptor> = Vec::new();
         let mut classes: Vec<ClassDefinition> = Vec::new();
-
         for class in &self.classes {
             string_ids
                 .entry(class.name.value.clone())
@@ -180,10 +177,8 @@ impl BinaryAbcFile {
                     });
                     id
                 });
-
             let type_id = TypeId::new(type_descriptors.len() as u32);
             type_descriptors.push(TypeDescriptor::Unknown(class.offset));
-
             classes.push(ClassDefinition {
                 name: type_id,
                 language: StringId::new(0),
@@ -197,7 +192,6 @@ impl BinaryAbcFile {
                 metadata: Vec::new(),
             });
         }
-
         constant_pool.strings = string_records;
         constant_pool.types = type_descriptors;
         constant_pool.literals = self
@@ -211,7 +205,6 @@ impl BinaryAbcFile {
                 })
             })
             .collect();
-
         ArkBytecodeFile {
             header,
             constant_pool,
@@ -222,7 +215,6 @@ impl BinaryAbcFile {
             sections: SectionOffsets::default(),
         }
     }
-
     /// Returns a best-effort textual [`AbcFile`] representation of this binary module.
     ///
     /// The result is intentionally lossy while we continue to reverse engineer the
@@ -231,7 +223,6 @@ impl BinaryAbcFile {
     pub fn to_abc_file(&self) -> AbcFile {
         let mut file = AbcFile::default();
         file.language = Some("ArkTS (binary preview)".to_owned());
-
         file.segments.push(AbcSegment::Raw(format!(
             "# generated from binary module ({} classes, {} literal arrays)",
             self.classes.len(),
@@ -240,47 +231,49 @@ impl BinaryAbcFile {
         file.segments.push(AbcSegment::Raw(String::new()));
         file.segments
             .push(AbcSegment::Raw("# ===================".to_owned()));
-        file.segments
-            .push(AbcSegment::Raw("# LITERALS (binary)".to_owned()));
+        file.segments.push(AbcSegment::Raw("# LITERALS".to_owned()));
         file.segments
             .push(AbcSegment::Raw("# ===================".to_owned()));
-
         for (index, (offset, entry)) in self
             .literal_offsets
             .iter()
             .zip(self.literal_arrays.iter())
             .enumerate()
         {
-            let mut lines = Vec::new();
-
-            match entry {
+            let (body, lines) = match entry {
                 Some(array) => {
-                    lines.push(format!(
-                        "{index} 0x{offset:04x} {{ {} [",
-                        array.entries.len()
-                    ));
-                    for literal in &array.entries {
-                        lines.push(format!("\t{},", self.render_literal_value(literal)));
-                    }
-                    lines.push("]}".to_owned());
+                    let items = array
+                        .entries
+                        .iter()
+                        .map(|value| format!("{}{}", self.render_literal_value(value), ","))
+                        .collect::<Vec<_>>();
+                    let rendered = if items.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" {}", items.join(" "))
+                    };
+                    let line = format!(
+                        "{index} 0x{offset:04x} {{ {} [{} ]}}",
+                        array.entries.len(),
+                        rendered
+                    );
+                    (line.clone(), vec![line])
                 }
                 None => {
-                    lines.push(format!("{index} 0x{offset:04x} {{ <unresolved> }}"));
+                    let line = format!("{index} 0x{offset:04x} {{ <unresolved> }}");
+                    (line.clone(), vec![line])
                 }
-            }
-
-            let body = lines.join("\n");
+            };
             file.literals.push(LiteralEntry {
                 index: index as u32,
                 offset: *offset,
-                body,
+                body: body.clone(),
                 lines,
             });
             let lit_idx = file.literals.len() - 1;
             file.segments.push(AbcSegment::Literal(lit_idx));
             file.segments.push(AbcSegment::Raw(String::new()));
         }
-
         file.segments.push(AbcSegment::Raw(String::new()));
         file.segments
             .push(AbcSegment::Raw("# ===================".to_owned()));
@@ -288,7 +281,6 @@ impl BinaryAbcFile {
             .push(AbcSegment::Raw("# RECORDS (binary)".to_owned()));
         file.segments
             .push(AbcSegment::Raw("# ===================".to_owned()));
-
         for class in &self.classes {
             let record_name = normalize_record_name(&class.name.value);
             let mut lines = Vec::new();
@@ -297,7 +289,6 @@ impl BinaryAbcFile {
             lines.push(format!("\tu32 field_count = {};", class.field_count));
             lines.push(format!("\tu32 method_count = {};", class.method_count));
             lines.push("}".to_owned());
-
             let body = lines.join("\n");
             file.records.push(RecordEntry {
                 name: record_name,
@@ -308,7 +299,6 @@ impl BinaryAbcFile {
             file.segments.push(AbcSegment::Record(rec_idx));
             file.segments.push(AbcSegment::Raw(String::new()));
         }
-
         if !self.method_index.is_empty() {
             file.segments
                 .push(AbcSegment::Raw("# ===================".to_owned()));
@@ -316,12 +306,15 @@ impl BinaryAbcFile {
                 .push(AbcSegment::Raw("# FUNCTIONS (binary)".to_owned()));
             file.segments
                 .push(AbcSegment::Raw("# ===================".to_owned()));
-
             for entry in &self.method_index {
-                let method_name = self
+                let mut method_name = self
                     .resolve_string(entry.name_offset)
+                    .filter(|s| !s.is_empty())
                     .map(|s| normalize_method_name(&s))
                     .unwrap_or_else(|| format!("method@0x{:x}", entry.name_offset));
+                if method_name.chars().any(|ch| ch.is_control()) {
+                    method_name = format!("method@0x{:x}", entry.name_offset);
+                }
                 file.segments
                     .push(AbcSegment::Raw(format!(".function any {} {{", method_name)));
                 file.segments
@@ -330,10 +323,8 @@ impl BinaryAbcFile {
                 file.segments.push(AbcSegment::Raw(String::new()));
             }
         }
-
         file
     }
-
     fn resolve_string(&self, offset: u32) -> Option<String> {
         if offset == 0 || (offset as usize) >= self.data.len() {
             return None;
@@ -343,49 +334,52 @@ impl BinaryAbcFile {
             .ok()
             .map(|entry| entry.value)
     }
-
     fn render_literal_value(&self, value: &AbcLiteralValue) -> String {
         match value {
             AbcLiteralValue::Boolean(v) => {
                 format!("bool:{}", if *v { "true" } else { "false" })
             }
-            AbcLiteralValue::Integer(v) => format!("i64:{v}"),
+            AbcLiteralValue::Integer(v) => format!("i32:{v}"),
             AbcLiteralValue::Float(v) => format!("f32:{v}"),
             AbcLiteralValue::Double(v) => format!("f64:{v}"),
             AbcLiteralValue::String(index) => {
                 if let Some(value) = self.resolve_string(*index) {
-                    format!("string:\"{}\"", escape_string(&value))
+                    let normalized = if value.starts_with('L') && value.ends_with(';') {
+                        normalize_record_name(&value)
+                    } else {
+                        value
+                    };
+                    format!("string:\"{}\"", escape_string(&normalized))
                 } else {
                     format!("string_id:{}", index)
                 }
             }
             AbcLiteralValue::Type(index) => format!("type_id:{}", index),
-            AbcLiteralValue::Method(index) => format!("method_id:{}", index),
+            AbcLiteralValue::Method(index) => format!("method:0x{index:04x}"),
             AbcLiteralValue::MethodAffiliate(idx) => {
                 format!("method_affiliate:{}", idx)
             }
             AbcLiteralValue::Builtin(code) => format!("builtin:{}", code),
             AbcLiteralValue::Accessor(code) => format!("accessor:{}", code),
-            AbcLiteralValue::LiteralArray(index) => format!("literal_ref:{}", index),
-            AbcLiteralValue::BigInt(bytes) => format!("bigint({} bytes)", bytes.len()),
+            AbcLiteralValue::LiteralArray(index) => format!("literal_array:0x{index:04x}"),
+            AbcLiteralValue::BigInt(bytes) => format!("bigint(len={})", bytes.len()),
             AbcLiteralValue::BigIntExternal { length } => {
-                format!("bigint_external({length} bytes)")
+                format!("bigint_external(len={length})")
             }
             AbcLiteralValue::Any { type_index, data } => {
-                format!("any(type={}, {} bytes)", type_index, data.len())
+                format!("any(type={}, len={})", type_index, data.len())
             }
             AbcLiteralValue::AnyExternal { type_index, length } => {
-                format!("any_external(type={}, {length} bytes)", type_index)
+                format!("any_external(type={}, len={length})", type_index)
             }
-            AbcLiteralValue::Null => "null".to_owned(),
+            AbcLiteralValue::Null => "null_value:0".to_owned(),
             AbcLiteralValue::Undefined => "undefined".to_owned(),
             AbcLiteralValue::Raw { tag, bytes } => {
-                format!("raw(tag=0x{tag:02x}, {} bytes)", bytes.len())
+                format!("raw(tag=0x{tag:02x}, len={})", bytes.len())
             }
         }
     }
 }
-
 fn convert_literal_value(value: &AbcLiteralValue) -> LiteralValue {
     match value {
         AbcLiteralValue::Boolean(v) => LiteralValue::Boolean(*v),
@@ -419,7 +413,6 @@ fn convert_literal_value(value: &AbcLiteralValue) -> LiteralValue {
         },
     }
 }
-
 fn escape_string(value: &str) -> String {
     let mut escaped = String::with_capacity(value.len());
     for ch in value.chars() {
@@ -433,12 +426,10 @@ fn escape_string(value: &str) -> String {
     }
     escaped
 }
-
 fn normalize_record_name(raw: &str) -> String {
     if raw.is_empty() {
         return raw.to_owned();
     }
-
     let mut name = raw;
     if let Some(stripped) = name.strip_prefix('L') {
         name = stripped;
@@ -446,15 +437,12 @@ fn normalize_record_name(raw: &str) -> String {
     if let Some(stripped) = name.strip_suffix(';') {
         name = stripped;
     }
-
     name.replace('/', ".")
 }
-
 fn normalize_method_name(raw: &str) -> String {
     if raw.is_empty() {
         return raw.to_owned();
     }
-
     let mut name = raw;
     if let Some(stripped) = name.strip_prefix('L') {
         name = stripped;
@@ -464,12 +452,10 @@ fn normalize_method_name(raw: &str) -> String {
     }
     name.replace('/', ".")
 }
-
 #[cfg(test)]
 mod tests {
     use super::BinaryAbcFile;
     use crate::abc_types::AbcLiteralValue;
-
     #[test]
     fn parse_module_classes() {
         let bytes = std::fs::read("test-data/modules.abc").expect("fixture");
@@ -481,7 +467,6 @@ mod tests {
                 .any(|cls| cls.name.value.contains("EntryAbility"))
         );
     }
-
     #[test]
     fn convert_to_high_level_file() {
         let bytes = std::fs::read("test-data/wechat.abc").expect("fixture");
@@ -496,7 +481,6 @@ mod tests {
             .count();
         assert_eq!(ark.constant_pool.literals.len(), populated);
     }
-
     #[test]
     fn decode_first_literal_array_entries() {
         let bytes = std::fs::read("test-data/wechat.abc").expect("fixture");
@@ -509,7 +493,6 @@ mod tests {
             .next()
             .expect("at least one literal array");
         assert!(!first.entries.is_empty());
-
         assert!(
             abc.literal_arrays
                 .iter()
@@ -523,11 +506,9 @@ mod tests {
                         | AbcLiteralValue::BigIntExternal { .. }
                 ))
         );
-
         let ark = abc.to_ark_file();
         assert!(!ark.constant_pool.literals.is_empty());
     }
-
     #[test]
     fn parse_wechat_literal_index() {
         let bytes = std::fs::read("test-data/wechat.abc").expect("fixture");
@@ -540,11 +521,9 @@ mod tests {
                 .all(|(offset, maybe)| (*offset == 0) == maybe.is_none())
         );
     }
-
     #[test]
     fn dump_modules_disassembly() {
         use std::path::Path;
-
         let bytes = std::fs::read("test-data/modules.abc").expect("fixture");
         let abc = BinaryAbcFile::parse(&bytes).expect("parse binary abc");
         let textual = abc.to_abc_file();

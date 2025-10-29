@@ -248,3 +248,243 @@ hx1997 / ark-bytecode-010editor-template
 seaxiang.com blog Ark Bytecode Analysis
 
 HarmonyOS ArkCompiler source (ETS runtime)
+
+Here’s a “where-to-look / how-it-works” map of the Ark/OpenHarmony sources you pointed at, focused only on literals, constant-pool–style entries, and how the disassembler renders them. I’ve kept it as a precise porting guide for your Rust parser.
+
+---
+
+# 1) Where literal decoding actually happens
+
+**Core entry points (libpandafile):**
+
+* `libpandafile/literal_data_accessor.h / .inl.h / .cpp` – defines the *literal array* reader and the literal **tag → value** decoding logic (tag enum, `LiteralValue` variant, and helpers to step through one array). ([GitHub][1])
+* `libpandafile/file.h / file.cpp` – owns the `.abc` layout, region offsets/sizes, and provides accessors that hand you a `LiteralDataAccessor` for a given literal array ID; also resolves indices (strings, methods, classes) by bridging to the relevant index tables. ([GitHub][2])
+* `libpandafile/file_items.h / file_items.cpp` – defines the on-disk “items” (record headers, per-region entries, index record types) that `File` uses to navigate to the literal section and other indices. (File is the high-level API; *items* describe the binary layout used by File.) *Pointer in README/dir structure; open these alongside `file.*` while porting.* ([Gitee][3])
+
+**Useful cross-references:**
+
+* The OpenHarmony README describes the disassembler (`ark_disasm`) living alongside `libpandafile`. That disassembler uses `File` + the accessors above and formats literal entries as text. Use it as the model for how to print decoded literal entries. ([Gitee][3])
+* Community 010-Editor template notes the same files (`literal_data_accessor.h`, `literal_data_accessor-inl.h`) and their `LiteralTag` mapping; helpful as a cross-check when porting tags. ([GitHub][4])
+
+---
+
+# 2) Data structures that describe literal array payloads
+
+> Names follow the C++ side; in Rust, mirror them as enums/structs. (Exact type/field names below are from the accessor headers and common patterns in `libpandafile`.)
+
+**Top-level:**
+
+* `enum class LiteralTag : uint8_t`
+  Canonical tags used in each literal entry. Typical values seen in `literal_data_accessor[-inl].h` include (names may be upper-case, exact spellings from headers):
+
+  * **Primitives**: `BOOL`, `INTEGER`/`I32` (and often `I64`), `DOUBLE`/`F64`, `NULLVALUE`, `UNDEFINED`, `HOLE`
+  * **String**: `STRING` (payload is a *StringId* → string table index)
+  * **Method / Function-like**: `METHOD`, sometimes additional function flavors (e.g., generator) in newer ABCs
+  * **Nested literal arrays**: `LITERALARRAY` (payload is a *LiteralArrayId* referencing the same section)
+  * **Typed arrays / raw arrays**: `ARRAY_U8/U16/U32`, `ARRAY_I8/I16/I32/I64`, `ARRAY_F32/F64` (payload is a count + inline element bytes)
+  * **Accessor / record-like**: tags that wrap small records (used by module metadata and property descriptors)
+  * **BigInt / Any**: present in recent ABC versions for JS/ArkTS features
+    (Exact list may differ slightly per ABC version; keep a version gate, see §4.)
+
+* `using LiteralValue = std::variant<...>`
+  Variant that holds the decoded payload for a single tagged literal. Expect arms like: `bool`, `int32_t/int64_t`, `double`, `StringId` (u32), `MethodId`/`MethodIndex`, `LiteralArrayId` (u32), `Span<uint8_t>`/`vector<T>` for typed arrays, and small structs for “accessor”-style entries.
+
+* `class LiteralDataAccessor`
+  Reads **one literal array**:
+
+  * Reads the array header (`num_literals` etc.)
+  * Iterates entries: `(tag: LiteralTag, value: LiteralValue)`
+  * Exposes helpers to fetch N-th entry and to decode payloads according to `LiteralTag`.
+
+* **Indices used inside literal payloads** (from other accessors):
+
+  * `StringDataAccessor`/**File::GetStringData**: turns a `StringId` into UTF-16/UTF-8 text.
+  * `MethodDataAccessor`/**File::GetMethod...**: resolves `MethodId` or method index to name/signature and owning class/module.
+  * `ProtoDataAccessor`, `ClassDataAccessor` – sometimes involved when a literal refers to a proto/class symbol rather than raw text.
+
+---
+
+# 3) How ark_disasm maps literal entries → human-readable output
+
+The disassembler follows a **tag-switch → printer** pattern (you can mirror this):
+
+* **Booleans/Nullish**
+
+  * `BOOL`: prints `true` / `false`
+  * `NULLVALUE`: prints `null`
+  * `UNDEFINED`: prints `undefined`
+  * `HOLE`: prints `hole` (used by array holes)
+
+* **Numbers**
+
+  * `INTEGER`/`I32`/`I64`: prints `i32:<value>` or `i64:<value>` (older printers sometimes omit the width)
+  * `DOUBLE`/`F64`: prints `f64:<value>` (C++ uses `std::bit_cast` from payload bytes to double)
+
+* **String**
+
+  * `STRING (StringId)`: resolves via string table, prints `string:"<escaped>"`. (Use `File` string accessor to decode; Ark strings may be UTF-16 in file, printer escapes quotes/backslashes.)
+
+* **Method / function ref**
+
+  * `METHOD (MethodId/Index)`: resolves to a method in the method index region. Printer typically shows `method:#<id>` and, when verbose, a comment with `ClassName.methodName:shorty`. (You can optionally replicate that by asking `MethodDataAccessor` for name + proto.)
+
+* **Nested literal array**
+
+  * `LITERALARRAY (LiteralArrayId)`: prints `literalarr@<id>`; in verbose mode the disassembler inlines or comments the first few children for readability.
+
+* **Typed arrays**
+
+  * `ARRAY_U8` etc.: prints `u8[<n>]:{b0,b1,...}` (count + comma-separated payload). Floats are rendered as numeric literals.
+
+* **Module / record-style entries**
+
+  * Accessor/record tags are printed as structured tuples or key/value lists. For **module requests/imports/exports**, the disassembler resolves:
+
+    * Request string via `STRING`
+    * Imported binding names (strings)
+    * Optional local name (string)
+      These are printed as `module_request("<spec>")`, `import("<imported>", local="<local>")`, etc., depending on the exact record tag set. (The literal payloads for these are arrays/records with fixed field order; see §2 and confirm in your version gate.)
+
+> Implementation hint: keep **two layers**: (a) *decode* to `enum Literal { … }` with indices unresolved, and (b) *format* with a `Resolver` that maps `StringId/MethodId/LiteralArrayId` to names/text.
+
+---
+
+# 4) Offsets, tables, and version checks you need to mirror
+
+**Header & index regions (from `File`):**
+
+* The file header gives you **index section offset** and per-region offsets (class index, method index, literal arrays, etc.). Newer ABC versions dropped the legacy `num_literalarrays`/`literalarray_idx_off` fields from the header and moved everything under the index section. Keep a small **version switch** when reading literal region metadata. (This exact difference is called out by community notes and is visible in the `file_format_version` handling in `file.cpp`.) ([GitHub][4])
+* `File` exposes getters like:
+
+  * `GetLiteralArraysOffset()/Size()` (names vary; follow the `file.h` accessors)
+  * `GetStringIndex()/GetStringData()`
+  * `GetMethodIndex()/GetMethod...()`
+  * `Get...ById(offset/id)` helpers that translate IDs to byte spans
+
+**Literal arrays layout (from `LiteralDataAccessor`):**
+
+* A *literal array record* starts with a count field (historically `num_literals`; in some versions it is encoded as “pairs” → divide by 2 – retain the exact logic from the accessor; don’t copy old docs). Each entry is:
+
+  ```
+u8 tag   // LiteralTag
+<payload>  // size/type depends on tag
+  ```
+* Payload encodings you must replicate:
+
+  * **STRING**: `u32 string_id`
+  * **METHOD**: method index ID (size matches method id representation in your ABC version; often `u32`)
+  * **LITERALARRAY**: `u32 array_id`
+  * **INTEGER/I64**: fixed-width little-endian int
+  * **DOUBLE/F64**: IEEE-754 little-endian 64-bit
+  * **Typed arrays**: `u32 elem_count` + raw element bytes (`count * sizeof(T)`)
+  * **Accessor/record**: small fixed schema (typically a sub-array: tag + small tuple of primitives/ids)
+    (Exact widths are in the inlined decoding helpers inside `literal_data_accessor-inl.h` – mirror them byte-for-byte.) ([GitHub][5])
+
+**String/method resolution:**
+
+* Strings: `File::GetStringData(StringId)` → returns a view you can UTF-decode and escape for printing.
+* Methods: `File::GetMethod...` (via `MethodDataAccessor`) → gives name, shorty/proto, and owner. Use this to print `method:#id /* Owner.name:proto */` in verbose mode.
+
+---
+
+# 5) Porting plan for ark-rs (step-by-step)
+
+1. **Load regions & version-gate**
+
+* Read header; locate **index section**; from there get **literal arrays region** and counts/ids. Keep a small `AbcVersion { major, minor, patch, build }` and branch if your source shows pre-12 behavior for literal arrays.
+* In Rust, model:
+
+  ```rust
+  struct AbcFile { version: AbcVersion, strings: StringIndex, methods: MethodIndex, literal_arrays: ByteSpan, /* ... */ }
+  ```
+
+2. **Define the Rust tags & payloads**
+
+* Mirror `LiteralTag` as `#[repr(u8)] enum LiteralTag { … }`.
+* Define:
+
+  ```rust
+  enum LiteralValue {
+      Bool(bool),
+      I32(i32), I64(i64), F64(f64),
+      StringId(u32),
+      MethodId(u32),
+      LiteralArrayId(u32),
+      U8Array(Vec<u8>), I32Array(Vec<i32>), F64Array(Vec<f64>), /* … */
+      Accessor { /* exact fields per tag */ },
+      Null, Undefined, Hole,
+  }
+  struct Literal { tag: LiteralTag, value: LiteralValue }
+  struct LiteralArray { entries: Vec<Literal> }
+  ```
+
+3. **Implement `LiteralDataAccessor` in Rust**
+
+* Given `ByteSpan` for an array:
+
+    * Read `num_literals` (apply the exact accessor’s normalization if the C++ does a “divide by 2” step on some versions).
+    * For `0..num_literals`: read `tag: u8`, then decode payload by tag using fixed sizes/LE; advance pointer accordingly.
+* Keep this decoder **pure** (no name resolution yet).
+
+4. **Build a `Resolver` layer**
+
+* `resolve_string(id) -> Cow<'a, str>`
+* `resolve_method(id) -> MethodInfo { owner, name, proto }`
+* `resolve_literal_array(id) -> &LiteralArray`
+* These thin wrappers call your `File` indices.
+
+5. **Printer formatting**
+
+* Implement the same shape as ark_disasm:
+
+    * `Bool` → `true/false`
+    * `Null/Undefined/Hole` → as bare keywords
+    * `I32/I64` → `i32:<n>` / `i64:<n>`
+    * `F64` → `f64:<n>`
+    * `StringId` → `string:"<escaped>"`
+    * `MethodId` → `method:#<id>` (+ optional comment with resolved signature)
+    * `LiteralArrayId` → `literalarr@<id>`
+    * Typed arrays → `<ty>[<n>]:{...}`
+    * Accessor/module records → format as `module_request("<spec>")`, `import("<imported>", local="…")`, etc., following the tag’s schema in your version (decode first, then format fields).
+
+6. **Tests against ark_disasm**
+
+* For a corpus of ABCs, diff your literal printout with ark_disasm `--verbose`. Where they differ, check `LiteralTag`/payload widths in `literal_data_accessor-inl.h` and adjust.
+
+---
+
+## Quick file checklist (to open side-by-side while porting)
+
+* **Tags & decode**
+
+    * `libpandafile/literal_data_accessor.h` – class, `LiteralTag`, `LiteralValue` typedefs; array iteration API. ([GitHub][1])
+    * `libpandafile/literal_data_accessor-inl.h` – inlined payload readers for each tag (authoritative sizes/endianness). ([GitHub][5])
+* **Offsets/indices**
+
+    * `libpandafile/file.h` – region getters (literal array start/size), string/method accessors, version helpers. ([GitHub][2])
+    * `libpandafile/file.cpp` – version gates & region dispatch (watch for differences around 12.x where literal-array header fields were removed). ([GitHub][6])
+    * `libpandafile/file_items.h/.cpp` – raw item/record layouts used by `File` to hop into regions. ([Gitee][3])
+* **Disassembler behavior**
+
+    * `README.md` (tooling overview; flags like `--verbose`). Use as a reference for what to print. ([Gitee][3])
+* **Community cross-check**
+
+    * 010-Editor template repository notes the exact files it scraped tags from (`literal_data_accessor*.h`) and the literal-array count nuance; good sanity check while you implement. ([GitHub][4])
+
+---
+
+## Notes & pitfalls
+
+* **Version drift:** literal array header fields and some tags changed across 12.x; rely on `file_format_version` logic in `file.cpp` and keep a small `match version` in your Rust reader. ([GitHub][6])
+* **Indices vs immediates:** strings/methods/literal-arrays are **indices**, not inline data. Always resolve via `File` accessors only at *formatting* time.
+* **Typed arrays:** sizes are fixed; don’t read via LEB128. Length is usually a `u32` immediately before payload.
+* **Module/record tags:** model them as small structs in your `LiteralValue` (or a nested `Enum`) and print fieldwise; they’re just well-known shapes in the literal stream.
+
+If you want, I can sketch the exact Rust `enum LiteralTag` and the per-tag decode function signatures next, but the map above points you to the authoritative places in `libpandafile` you asked for.
+
+[1]: https://github.com/openharmony/ark_runtime_core/blob/master/libpandafile/literal_data_accessor.h "ark_runtime_core/libpandafile/literal_data_accessor.h at master · openharmony/ark_runtime_core · GitHub"
+[2]: https://github.com/openharmony/ark_runtime_core/blob/master/libpandafile/file.h "ark_runtime_core/libpandafile/file.h at master · openharmony/ark_runtime_core · GitHub"
+[3]: https://gitee.com/openharmony/arkcompiler_runtime_core/blob/master/README.md?utm_source=chatgpt.com "OpenHarmony/arkcompiler_runtime_core"
+[4]: https://github.com/hx1997/ark-bytecode-010editor-template?utm_source=chatgpt.com "Ark Bytecode (.abc) 010Editor Template"
+[5]: https://github.com/openharmony/ark_runtime_core/blob/master/libpandafile/literal_data_accessor-inl.h "ark_runtime_core/libpandafile/literal_data_accessor-inl.h at master · openharmony/ark_runtime_core · GitHub"
+[6]: https://github.com/openharmony/ark_runtime_core/blob/master/libpandafile/file.cpp "ark_runtime_core/libpandafile/file.cpp at master · openharmony/ark_runtime_core · GitHub"

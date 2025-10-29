@@ -492,6 +492,31 @@ impl AbcLiteralArray {
     }
 }
 
+impl AbcLiteralValue {
+    pub fn encoded_size(&self) -> usize {
+        1 + match self {
+            AbcLiteralValue::Boolean(_) => 1,
+            AbcLiteralValue::Integer(_) => 4,
+            AbcLiteralValue::Float(_) => 4,
+            AbcLiteralValue::Double(_) => 8,
+            AbcLiteralValue::String(_) => 4,
+            AbcLiteralValue::Type(_) => 4,
+            AbcLiteralValue::Method(_) => 4,
+            AbcLiteralValue::MethodAffiliate(_) => 2,
+            AbcLiteralValue::Builtin(_) => 1,
+            AbcLiteralValue::Accessor(_) => 1,
+            AbcLiteralValue::LiteralArray(_) => 4,
+            AbcLiteralValue::BigInt(bytes) => 4 + bytes.len(),
+            AbcLiteralValue::BigIntExternal { .. } => 4,
+            AbcLiteralValue::Any { data, .. } => 8 + data.len(),
+            AbcLiteralValue::AnyExternal { .. } => 8,
+            AbcLiteralValue::Null => 0,
+            AbcLiteralValue::Undefined => 0,
+            AbcLiteralValue::Raw { bytes, .. } => bytes.len(),
+        }
+    }
+}
+
 /// Basic metadata stored in a class definition entry.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AbcClassDefinition {
