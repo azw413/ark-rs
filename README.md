@@ -70,3 +70,5 @@ them.
 
 Please file issues or PRs once the GitHub repository is available.
 
+## Known issues
+function listings have the wrong names (random string entries)
