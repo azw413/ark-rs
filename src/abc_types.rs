@@ -524,6 +524,77 @@ impl AbcLiteralArray {
     }
 }
 
+/// Tagged metadata describing a method entry within a class definition.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AbcMethodItem {
+    pub offset: u32,
+    pub class_index: u16,
+    pub proto_index: u16,
+    pub name: AbcStringEntry,
+    pub index_data: u32,
+    pub tags: Vec<AbcMethodTag>,
+    pub declaring_class_offset: Option<u32>,
+}
+
+/// Single tagged payload associated with a method entry.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AbcMethodTag {
+    pub id: u8,
+    pub value: u32,
+}
+
+impl AbcMethodItem {
+    /// Parses a method entry located at `offset` and returns the decoded item together with its size.
+    pub fn read_at(bytes: &[u8], offset: u32) -> ArkResult<(Self, u32)> {
+        let mut reader = AbcReader::new(bytes);
+        reader.seek(offset as usize)?;
+
+        let class_index = reader.read_u16()?;
+        let proto_index = reader.read_u16()?;
+        let name_offset = reader.read_u32()?;
+        if (name_offset as usize) >= bytes.len() {
+            return Err(ArkError::format("method name offset outside file"));
+        }
+        let mut string_reader = AbcReader::new(bytes);
+        let name = AbcStringEntry::read_at(&mut string_reader, name_offset)?;
+        let index_data = reader.read_u32()?;
+
+        let mut tags = Vec::new();
+        loop {
+            if reader.remaining() == 0 {
+                return Err(ArkError::format("unterminated method tag stream"));
+            }
+            let tag_id = reader.read_u8()?;
+            if tag_id == 0 {
+                break;
+            }
+            if reader.remaining() < 4 {
+                return Err(ArkError::format("method tag payload truncated"));
+            }
+            let value = reader.read_u32()?;
+            tags.push(AbcMethodTag { id: tag_id, value });
+        }
+
+        let end = reader.position() as u32;
+        if end <= offset {
+            return Err(ArkError::format("zero-length method entry"));
+        }
+
+        Ok((
+            AbcMethodItem {
+                offset,
+                class_index,
+                proto_index,
+                name,
+                index_data,
+                tags,
+                declaring_class_offset: None,
+            },
+            end - offset,
+        ))
+    }
+}
+
 impl AbcLiteralValue {
     pub fn encoded_size(&self) -> usize {
         1 + match self {

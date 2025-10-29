@@ -1,7 +1,7 @@
 use crate::abc::{AbcFile, AbcSegment, LiteralEntry, RecordEntry};
 use crate::abc_types::{
-    AbcClassDefinition, AbcHeader, AbcIndexHeader, AbcLiteralArray, AbcLiteralValue, AbcReader,
-    AbcStringEntry,
+    AbcClassDefinition, AbcHeader, AbcIndexHeader, AbcLiteralArray, AbcLiteralValue, AbcMethodItem,
+    AbcReader, AbcStringEntry,
 };
 use crate::classes::{ClassDefinition, ClassFlag};
 use crate::constant_pool::{ConstantPool, LiteralArray, LiteralValue, StringRecord};
@@ -16,10 +16,12 @@ pub struct BinaryAbcFile {
     pub header: AbcHeader,
     pub class_offsets: Vec<u32>,
     pub classes: Vec<AbcClassDefinition>,
+    pub class_ranges: Vec<(u32, u32)>,
     pub literal_offsets: Vec<u32>,
     pub literal_arrays: Vec<Option<AbcLiteralArray>>,
     pub record_offsets: Vec<u32>,
     pub method_index: Vec<MethodIndexEntry>,
+    pub methods: Vec<AbcMethodItem>,
     data: Vec<u8>,
 }
 #[derive(Debug, Clone, Copy)]
@@ -164,14 +166,67 @@ impl BinaryAbcFile {
         } else {
             Vec::new()
         };
+        let mut methods = Vec::new();
+        let mut seen_method_offsets = std::collections::HashSet::new();
+        let class_region_end = index_header
+            .as_ref()
+            .map(|idx| idx.start)
+            .unwrap_or(data.len() as u32);
+        let mut boundaries: Vec<(u32, usize)> = class_offsets
+            .iter()
+            .copied()
+            .enumerate()
+            .filter(|(_, offset)| *offset > 0)
+            .map(|(index, offset)| (offset, index))
+            .collect();
+        boundaries.sort_by_key(|(offset, _)| *offset);
+        let mut class_ranges = vec![(0u32, class_region_end); classes.len()];
+        for (position, &(start_offset, class_idx)) in boundaries.iter().enumerate() {
+            let class = &classes[class_idx];
+            let expected = class.method_count as usize;
+            if expected == 0 {
+                class_ranges[class_idx] = (
+                    start_offset,
+                    boundaries
+                        .get(position + 1)
+                        .map(|(offset, _)| *offset)
+                        .unwrap_or(class_region_end),
+                );
+                continue;
+            }
+            let next_start = boundaries
+                .get(position + 1)
+                .map(|(offset, _)| *offset)
+                .unwrap_or(class_region_end);
+            class_ranges[class_idx] = (start_offset, next_start);
+            let mut cursor = start_offset as usize;
+            let limit = next_start.max(start_offset) as usize;
+            while cursor < limit {
+                match AbcMethodItem::read_at(&data, cursor as u32) {
+                    Ok((mut item, size)) if size > 0 => {
+                        if seen_method_offsets.insert(item.offset) {
+                            item.declaring_class_offset = Some(start_offset);
+                            methods.push(item);
+                        }
+                        cursor = cursor.saturating_add(size as usize);
+                    }
+                    _ => {
+                        cursor = cursor.saturating_add(1);
+                    }
+                }
+            }
+        }
+        methods.sort_by_key(|item| item.offset);
         Ok(BinaryAbcFile {
             header,
             class_offsets,
             classes,
+            class_ranges,
             literal_offsets,
             literal_arrays,
             record_offsets: vec![],
             method_index,
+            methods,
             data,
         })
     }
@@ -325,9 +380,9 @@ impl BinaryAbcFile {
             let record_name = normalize_record_name(&class.name.value);
             let mut lines = Vec::new();
             lines.push(format!(".record {} {{", record_name));
-            lines.push("\t# TODO: decode record body from binary".to_owned());
-            lines.push(format!("\tu32 field_count = {};", class.field_count));
-            lines.push(format!("\tu32 method_count = {};", class.method_count));
+            for line in self.render_record_body(class, &record_name) {
+                lines.push(line);
+            }
             lines.push("}".to_owned());
             let body = lines.join("\n");
             file.records.push(RecordEntry {
@@ -339,24 +394,25 @@ impl BinaryAbcFile {
             file.segments.push(AbcSegment::Record(rec_idx));
             file.segments.push(AbcSegment::Raw(String::new()));
         }
-        if !self.method_index.is_empty() {
+        if !self.methods.is_empty() {
             file.segments
                 .push(AbcSegment::Raw("# ===================".to_owned()));
             file.segments
                 .push(AbcSegment::Raw("# FUNCTIONS (binary)".to_owned()));
             file.segments
                 .push(AbcSegment::Raw("# ===================".to_owned()));
-            for entry in &self.method_index {
-                let mut method_name = self
-                    .resolve_string(entry.name_offset)
-                    .filter(|s| !s.is_empty())
-                    .map(|s| normalize_method_name(&s))
-                    .unwrap_or_else(|| format!("method@0x{:x}", entry.name_offset));
-                if method_name.chars().any(|ch| ch.is_control()) {
-                    method_name = format!("method@0x{:x}", entry.name_offset);
-                }
-                file.segments
-                    .push(AbcSegment::Raw(format!(".function any {} {{", method_name)));
+            for method in &self.methods {
+                let method_name = self.display_method_name(method);
+                let qualified_name = method
+                    .declaring_class_offset
+                    .and_then(|offset| self.class_name_for_offset(offset))
+                    .filter(|name| !name.is_empty())
+                    .map(|class_name| format!("{}.{}", class_name, method_name))
+                    .unwrap_or_else(|| method_name.clone());
+                file.segments.push(AbcSegment::Raw(format!(
+                    ".function any {} {{",
+                    qualified_name
+                )));
                 file.segments
                     .push(AbcSegment::Raw("\t# TODO: decode function body".to_owned()));
                 file.segments.push(AbcSegment::Raw("}".to_owned()));
@@ -576,27 +632,173 @@ impl BinaryAbcFile {
         }
     }
 
-    fn render_method_literal(&self, kind: &str, code_offset: u32) -> String {
-        if let Some(name) = self.format_method_ref(code_offset) {
+    fn render_method_literal(&self, kind: &str, method_offset: u32) -> String {
+        if let Some(name) = self.format_method_ref(method_offset) {
             format!("{kind}:{name}")
         } else {
-            format!("{kind}:0x{code_offset:04x}")
+            format!("{kind}:0x{method_offset:04x}")
         }
     }
 
-    fn format_method_ref(&self, code_offset: u32) -> Option<String> {
-        self.method_index
+    fn format_method_ref(&self, method_offset: u32) -> Option<String> {
+        self.get_method_by_offset(method_offset)
+            .map(|method| self.display_method_name(method))
+    }
+
+    fn get_method_by_offset(&self, offset: u32) -> Option<&AbcMethodItem> {
+        self.methods
+            .binary_search_by_key(&offset, |item| item.offset)
+            .ok()
+            .map(|index| &self.methods[index])
+    }
+
+    fn class_name_for_offset(&self, offset: u32) -> Option<String> {
+        self.classes
             .iter()
-            .find(|entry| entry.code_offset == code_offset)
-            .and_then(|entry| self.resolve_string(entry.name_offset))
-            .map(|name| {
-                if name.starts_with('#') {
-                    name
+            .find(|class| class.offset == offset)
+            .map(|class| normalize_record_name(&class.name.value))
+    }
+
+    fn display_method_name(&self, method: &AbcMethodItem) -> String {
+        let raw = &method.name.value;
+        if raw.is_empty() || raw.chars().any(|ch| ch.is_control()) {
+            format!("method@0x{:x}", method.offset)
+        } else if raw.starts_with('#') || raw.starts_with('@') {
+            raw.clone()
+        } else {
+            normalize_method_name(raw)
+        }
+    }
+
+    fn class_byte_range(&self, class: &AbcClassDefinition) -> (usize, usize) {
+        self.class_ranges
+            .iter()
+            .zip(self.classes.iter())
+            .find_map(|(&(start, end), candidate)| {
+                if candidate.offset == class.offset {
+                    Some((start as usize, end as usize))
                 } else {
-                    normalize_method_name(&name)
+                    None
                 }
             })
+            .unwrap_or((class.offset as usize, self.data.len()))
     }
+
+    fn render_record_body(&self, _class: &AbcClassDefinition, record_name: &str) -> Vec<String> {
+        if record_name.starts_with('&') {
+            let simple_name = simple_class_name(record_name);
+            let scope_literal = self
+                .find_scope_names_literal(_class, simple_name)
+                .unwrap_or_default();
+            let module_literal = self
+                .find_module_record_literal(_class, simple_name)
+                .unwrap_or_default();
+            let mut body = Vec::new();
+            body.push("\tu8 pkgName@entry = 0x0".to_owned());
+            body.push("\tu8 isCommonjs = 0x0".to_owned());
+            body.push("\tu8 hasTopLevelAwait = 0x0".to_owned());
+            body.push("\tu8 isSharedModule = 0x0".to_owned());
+            body.push(format!("\tu32 scopeNames = 0x{scope_literal:04x}"));
+            body.push(format!("\tu32 moduleRecordIdx = 0x{module_literal:04x}"));
+            body
+        } else if record_name.starts_with('@') {
+            let native_name = format!("@native.{}", record_name.trim_start_matches('@'));
+            vec![format!("\tu8 {} = 0x0", native_name)]
+        } else {
+            Vec::new()
+        }
+    }
+
+    fn find_scope_names_literal(
+        &self,
+        class: &AbcClassDefinition,
+        simple_name: &str,
+    ) -> Option<u32> {
+        let (start, end) = self.class_byte_range(class);
+        let mut cursor = start;
+        while cursor + 4 <= end {
+            let raw = u32::from_le_bytes(
+                self.data[cursor..cursor + 4]
+                    .try_into()
+                    .expect("slice to array"),
+            );
+            let candidate = raw >> 8;
+            if candidate != 0 {
+                let mut reader = AbcReader::new(&self.data);
+                if let Ok(array) = AbcLiteralArray::read_at(&mut reader, candidate) {
+                    if let Some(AbcLiteralValue::String(index)) = array.entries.first() {
+                        if self
+                            .resolve_string(*index)
+                            .map(|value| value == simple_name)
+                            .unwrap_or(false)
+                        {
+                            return Some(candidate);
+                        }
+                    }
+                }
+            }
+            cursor += 1;
+        }
+        None
+    }
+
+    fn find_module_record_literal(
+        &self,
+        class: &AbcClassDefinition,
+        simple_name: &str,
+    ) -> Option<u32> {
+        let (start, end) = self.class_byte_range(class);
+        let mut cursor = start;
+        let mut fallback = None;
+        while cursor + 4 <= end {
+            let raw = u32::from_le_bytes(
+                self.data[cursor..cursor + 4]
+                    .try_into()
+                    .expect("slice to array"),
+            );
+            let candidate = raw >> 8;
+            if candidate != 0 {
+                if let Some(module) = self.parse_module_literal(candidate) {
+                    if module.records.iter().any(|record| {
+                        record.tag == "LOCAL_EXPORT"
+                            && record
+                                .local_name
+                                .as_deref()
+                                .map(|name| name == simple_name)
+                                .unwrap_or(false)
+                    }) {
+                        return Some(candidate);
+                    }
+                    if fallback.is_none() {
+                        fallback = Some(candidate);
+                    }
+                }
+            }
+            cursor += 1;
+        }
+        if fallback.is_some() {
+            return fallback;
+        }
+        self.literal_offsets.iter().copied().find(|offset| {
+            self.parse_module_literal(*offset)
+                .map(|module| {
+                    module.records.iter().any(|record| {
+                        record.tag == "LOCAL_EXPORT"
+                            && record
+                                .local_name
+                                .as_deref()
+                                .map(|name| name == simple_name)
+                                .unwrap_or(false)
+                    })
+                })
+                .unwrap_or(false)
+        })
+    }
+}
+
+fn simple_class_name(record_name: &str) -> &str {
+    let trimmed = record_name.trim_matches('&');
+    trimmed.rsplit('.').next().unwrap_or(trimmed)
 }
 
 #[derive(Debug, Clone)]
@@ -734,7 +936,7 @@ fn normalize_method_name(raw: &str) -> String {
 }
 #[cfg(test)]
 mod tests {
-    use super::BinaryAbcFile;
+    use super::{BinaryAbcFile, normalize_record_name, simple_class_name};
     use crate::abc_types::AbcLiteralValue;
     #[test]
     fn parse_module_classes() {
@@ -824,5 +1026,57 @@ mod tests {
         let out_path = out_dir.join("modules.abc.out");
         std::fs::write(&out_path, report).expect("write disassembly report");
         println!("wrote {:?}", out_path);
+    }
+
+    #[test]
+    fn locate_module_literal_for_entryability() {
+        let bytes = std::fs::read("test-data/modules.abc").expect("fixture");
+        let abc = BinaryAbcFile::parse(&bytes).expect("parse binary abc");
+        let module = abc
+            .parse_module_literal(0x16d1)
+            .expect("module literal 0x16d1");
+        assert!(module.records.iter().any(|record| {
+            record.tag == "LOCAL_EXPORT"
+                && record
+                    .local_name
+                    .as_deref()
+                    .map(|name| name == "EntryAbility")
+                    .unwrap_or(false)
+        }));
+    }
+
+    #[test]
+    fn record_module_index_lookup() {
+        let bytes = std::fs::read("test-data/modules.abc").expect("fixture");
+        let abc = BinaryAbcFile::parse(&bytes).expect("parse binary abc");
+        let entry_record = abc
+            .classes
+            .iter()
+            .find(|class| {
+                normalize_record_name(&class.name.value)
+                    == "&entry.src.main.ets.entryability.EntryAbility&"
+            })
+            .expect("entry ability class");
+        let normalized = normalize_record_name(&entry_record.name.value);
+        let simple = simple_class_name(&normalized);
+        let offset = abc
+            .find_module_record_literal(entry_record, simple)
+            .expect("module literal for EntryAbility");
+        assert_eq!(offset, 0x16d1);
+
+        let index_record = abc
+            .classes
+            .iter()
+            .find(|class| {
+                normalize_record_name(&class.name.value)
+                    == "&entry.src.main.ets.pages.Index&"
+            })
+            .expect("index class");
+        let normalized_index = normalize_record_name(&index_record.name.value);
+        let simple_index = simple_class_name(&normalized_index);
+        let index_offset = abc
+            .find_module_record_literal(index_record, simple_index)
+            .expect("module literal for Index");
+        assert_eq!(index_offset, 0x1833);
     }
 }
