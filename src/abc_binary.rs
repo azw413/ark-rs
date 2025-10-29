@@ -1,4 +1,6 @@
-use crate::abc_types::{AbcClassDefinition, AbcHeader, AbcLiteralArray, AbcLiteralValue, AbcReader};
+use crate::abc_types::{
+    AbcClassDefinition, AbcHeader, AbcLiteralArray, AbcLiteralValue, AbcReader,
+};
 use crate::classes::{ClassDefinition, ClassFlag};
 use crate::constant_pool::{ConstantPool, LiteralArray, LiteralValue, StringRecord};
 use crate::error::{ArkError, ArkResult};
@@ -43,38 +45,37 @@ impl BinaryAbcFile {
             classes.push(class);
         }
 
-        let (literal_offsets, literal_arrays) = if header.literal_array_count == 0
-            || header.literal_array_index_offset == u32::MAX
-        {
-            (Vec::new(), Vec::new())
-        } else {
-            let literal_index_offset = header.literal_array_index_offset as usize;
-            let literal_count = header.literal_array_count as usize;
-            if literal_index_offset > bytes.len()
-                || literal_index_offset + literal_count.saturating_mul(4) > bytes.len()
-            {
-                return Err(ArkError::format("literal index table exceeds file length"));
-            }
-
-            let mut literal_index_reader = AbcReader::new(bytes);
-            literal_index_reader.seek(literal_index_offset)?;
-            let mut literal_offsets = Vec::with_capacity(literal_count);
-            for _ in 0..literal_count {
-                literal_offsets.push(literal_index_reader.read_u32()?);
-            }
-
-            let mut literal_arrays = Vec::with_capacity(literal_offsets.len());
-            for offset in &literal_offsets {
-                if *offset == 0 {
-                    literal_arrays.push(None);
-                    continue;
+        let (literal_offsets, literal_arrays) =
+            if header.literal_array_count == 0 || header.literal_array_index_offset == u32::MAX {
+                (Vec::new(), Vec::new())
+            } else {
+                let literal_index_offset = header.literal_array_index_offset as usize;
+                let literal_count = header.literal_array_count as usize;
+                if literal_index_offset > bytes.len()
+                    || literal_index_offset + literal_count.saturating_mul(4) > bytes.len()
+                {
+                    return Err(ArkError::format("literal index table exceeds file length"));
                 }
-                let array = AbcLiteralArray::read_at(&mut reader, *offset)?;
-                literal_arrays.push(Some(array));
-            }
 
-            (literal_offsets, literal_arrays)
-        };
+                let mut literal_index_reader = AbcReader::new(bytes);
+                literal_index_reader.seek(literal_index_offset)?;
+                let mut literal_offsets = Vec::with_capacity(literal_count);
+                for _ in 0..literal_count {
+                    literal_offsets.push(literal_index_reader.read_u32()?);
+                }
+
+                let mut literal_arrays = Vec::with_capacity(literal_offsets.len());
+                for offset in &literal_offsets {
+                    if *offset == 0 {
+                        literal_arrays.push(None);
+                        continue;
+                    }
+                    let array = AbcLiteralArray::read_at(&mut reader, *offset)?;
+                    literal_arrays.push(Some(array));
+                }
+
+                (literal_offsets, literal_arrays)
+            };
 
         Ok(BinaryAbcFile {
             header,
@@ -156,11 +157,7 @@ impl BinaryAbcFile {
             .filter_map(|(index, maybe_array)| {
                 maybe_array.as_ref().map(|array| LiteralArray {
                     id: index as u32,
-                    values: array
-                        .entries
-                        .iter()
-                        .map(convert_literal_value)
-                        .collect(),
+                    values: array.entries.iter().map(convert_literal_value).collect(),
                 })
             })
             .collect();
@@ -191,9 +188,16 @@ fn convert_literal_value(value: &AbcLiteralValue) -> LiteralValue {
         AbcLiteralValue::Accessor(code) => LiteralValue::Accessor(*code),
         AbcLiteralValue::LiteralArray(index) => LiteralValue::LiteralArray(*index),
         AbcLiteralValue::BigInt(bytes) => LiteralValue::BigInt(bytes.clone()),
+        AbcLiteralValue::BigIntExternal { length } => {
+            LiteralValue::BigIntExternal { length: *length }
+        }
         AbcLiteralValue::Any { type_index, data } => LiteralValue::Any {
             type_index: TypeId::new(*type_index),
             data: data.clone(),
+        },
+        AbcLiteralValue::AnyExternal { type_index, length } => LiteralValue::AnyExternal {
+            type_index: TypeId::new(*type_index),
+            length: *length,
         },
         AbcLiteralValue::Null => LiteralValue::Null,
         AbcLiteralValue::Undefined => LiteralValue::Undefined,
@@ -207,6 +211,7 @@ fn convert_literal_value(value: &AbcLiteralValue) -> LiteralValue {
 #[cfg(test)]
 mod tests {
     use super::BinaryAbcFile;
+    use crate::abc_types::AbcLiteralValue;
 
     #[test]
     fn parse_module_classes() {
@@ -227,7 +232,12 @@ mod tests {
         let ark = abc.to_ark_file();
         assert_eq!(ark.classes.len(), abc.classes.len());
         assert!(ark.constant_pool.strings.len() >= abc.classes.len());
-        assert!(ark.constant_pool.literals.len() >= abc.literal_arrays.len().saturating_sub(1));
+        let populated = abc
+            .literal_arrays
+            .iter()
+            .filter(|entry| entry.is_some())
+            .count();
+        assert_eq!(ark.constant_pool.literals.len(), populated);
     }
 
     #[test]
@@ -243,6 +253,20 @@ mod tests {
             .expect("at least one literal array");
         assert!(!first.entries.is_empty());
 
+        assert!(
+            abc.literal_arrays
+                .iter()
+                .flatten()
+                .flat_map(|array| &array.entries)
+                .any(|entry| matches!(
+                    entry,
+                    AbcLiteralValue::Any { .. }
+                        | AbcLiteralValue::AnyExternal { .. }
+                        | AbcLiteralValue::BigInt { .. }
+                        | AbcLiteralValue::BigIntExternal { .. }
+                ))
+        );
+
         let ark = abc.to_ark_file();
         assert!(!ark.constant_pool.literals.is_empty());
     }
@@ -252,10 +276,11 @@ mod tests {
         let bytes = std::fs::read("test-data/wechat.abc").expect("fixture");
         let abc = BinaryAbcFile::parse(&bytes).expect("parse binary abc");
         assert_eq!(abc.literal_offsets.len(), abc.literal_arrays.len());
-        assert!(abc
-            .literal_offsets
-            .iter()
-            .zip(abc.literal_arrays.iter())
-            .all(|(offset, maybe)| (*offset == 0) == maybe.is_none()));
+        assert!(
+            abc.literal_offsets
+                .iter()
+                .zip(abc.literal_arrays.iter())
+                .all(|(offset, maybe)| (*offset == 0) == maybe.is_none())
+        );
     }
 }

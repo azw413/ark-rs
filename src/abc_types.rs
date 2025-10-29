@@ -177,6 +177,11 @@ impl<'a> AbcReader<'a> {
         Ok(u32::from_le_bytes(self.read_array::<4>()?))
     }
 
+    /// Reads a big-endian `u32`.
+    pub fn read_u32_be(&mut self) -> ArkResult<u32> {
+        Ok(u32::from_be_bytes(self.read_array::<4>()?))
+    }
+
     /// Reads a little-endian `u64`.
     pub fn read_u64(&mut self) -> ArkResult<u64> {
         Ok(u64::from_le_bytes(self.read_array::<8>()?))
@@ -406,7 +411,9 @@ pub enum AbcLiteralValue {
     Accessor(u8),
     LiteralArray(u32),
     BigInt(Vec<u8>),
+    BigIntExternal { length: u32 },
     Any { type_index: u32, data: Vec<u8> },
+    AnyExternal { type_index: u32, length: u32 },
     Null,
     Undefined,
     Raw { tag: u8, bytes: Vec<u8> },
@@ -439,10 +446,26 @@ impl AbcLiteralArray {
                 0x0a => {
                     let type_index = reader.read_u32()?;
                     let len = reader.read_u32()? as usize;
-                    let data = reader.read_bytes(len)?.to_vec();
-                    AbcLiteralValue::Any { type_index, data }
+                    if len > reader.remaining() {
+                        AbcLiteralValue::AnyExternal {
+                            type_index,
+                            length: len as u32,
+                        }
+                    } else {
+                        let data = reader.read_bytes(len)?.to_vec();
+                        AbcLiteralValue::Any { type_index, data }
+                    }
                 }
                 0x0b => AbcLiteralValue::Undefined,
+                0x0c => {
+                    let len = reader.read_u32_be()? as usize;
+                    if len > reader.remaining() {
+                        AbcLiteralValue::BigIntExternal { length: len as u32 }
+                    } else {
+                        let bytes = reader.read_bytes(len)?.to_vec();
+                        AbcLiteralValue::BigInt(bytes)
+                    }
+                }
                 0x10 => AbcLiteralValue::Type(reader.read_u32()?),
                 0x18 => AbcLiteralValue::LiteralArray(reader.read_u32()?),
                 0x1a | 0x1b => AbcLiteralValue::Accessor(reader.read_u8()?),
