@@ -2,6 +2,7 @@
 
 pub mod abc;
 pub mod abc_binary;
+pub mod abc_literals;
 pub mod abc_types;
 pub mod attributes;
 pub mod classes;

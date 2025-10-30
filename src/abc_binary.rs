@@ -1,10 +1,11 @@
 use crate::abc::{AbcFile, AbcSegment, LiteralEntry, RecordEntry};
+use crate::abc_literals::{LiteralArray, LiteralEntry as LiteralArrayEntry, LiteralValue};
 use crate::abc_types::{
-    AbcClassDefinition, AbcHeader, AbcIndexHeader, AbcLiteralArray, AbcLiteralValue, AbcMethodItem,
+    AbcClassDefinition, AbcHeader, AbcIndexHeader, AbcMethodItem,
     AbcReader, AbcStringEntry,
 };
 use crate::classes::{ClassDefinition, ClassFlag};
-use crate::constant_pool::{ConstantPool, LiteralArray, LiteralValue, StringRecord};
+use crate::constant_pool::{ConstantPool, StringRecord};
 use crate::error::{ArkError, ArkResult};
 use crate::file::{ArkBytecodeFile, SectionOffsets};
 use crate::header::{Endianness, FileFlags, FileHeader, FileVersion, ModuleKind};
@@ -18,7 +19,7 @@ pub struct BinaryAbcFile {
     pub classes: Vec<AbcClassDefinition>,
     pub class_ranges: Vec<(u32, u32)>,
     pub literal_offsets: Vec<u32>,
-    pub literal_arrays: Vec<Option<AbcLiteralArray>>,
+    pub literal_arrays: Vec<Option<LiteralArray>>,
     pub record_offsets: Vec<u32>,
     pub method_index: Vec<MethodIndexEntry>,
     pub methods: Vec<AbcMethodItem>,
@@ -80,7 +81,7 @@ impl BinaryAbcFile {
                     cursor += 1;
                     continue;
                 }
-                match AbcLiteralArray::read_at(&mut reader, cursor as u32) {
+                match LiteralArray::read_at(&mut reader, cursor as u32) {
                     Ok(array) => {
                         let size = array.byte_len;
                         if size == 0 || cursor + size > region_end || cursor + size > data.len() {
@@ -108,7 +109,7 @@ impl BinaryAbcFile {
         for maybe_array in &literal_arrays {
             if let Some(array) = maybe_array {
                 for entry in &array.entries {
-                    if let AbcLiteralValue::LiteralArray(target) = entry {
+                    if let LiteralValue::LiteralArray(target) = &entry.value {
                         if known_offsets.insert(*target) {
                             queue.push_back(*target);
                         }
@@ -116,7 +117,7 @@ impl BinaryAbcFile {
                 }
             }
         }
-        let mut pairs: Vec<(u32, Option<AbcLiteralArray>)> = literal_offsets
+        let mut pairs: Vec<(u32, Option<LiteralArray>)> = literal_offsets
             .iter()
             .cloned()
             .zip(literal_arrays.into_iter())
@@ -292,7 +293,7 @@ impl BinaryAbcFile {
             .iter()
             .enumerate()
             .filter_map(|(index, maybe_array)| {
-                maybe_array.as_ref().map(|array| LiteralArray {
+                maybe_array.as_ref().map(|array| crate::constant_pool::LiteralArray {
                     id: index as u32,
                     values: array.entries.iter().map(convert_literal_value).collect(),
                 })
@@ -402,16 +403,33 @@ impl BinaryAbcFile {
             file.segments
                 .push(AbcSegment::Raw("# ===================".to_owned()));
             for method in &self.methods {
-                let method_name = self.display_method_name(method);
+                // Render method annotations first
+                self.render_method_annotations(method, &mut file.segments);
+
+                let method_name = &method.name.value;
+
+                // Use the raw method name directly - it already contains the signature format
                 let qualified_name = method
                     .declaring_class_offset
                     .and_then(|offset| self.class_name_for_offset(offset))
                     .filter(|name| !name.is_empty())
-                    .map(|class_name| format!("{}.{}", class_name, method_name))
+                    .map(|class_name| {
+                        // If method name is already qualified (starts with &), use it as-is
+                        if method_name.starts_with('&') {
+                            method_name.clone()
+                        } else {
+                            format!("&{}&.{}", class_name, method_name)
+                        }
+                    })
                     .unwrap_or_else(|| method_name.clone());
+
+                // Format parameters
+                let param_str = self.format_method_parameters(method);
+
+                // Add <static> modifier
                 file.segments.push(AbcSegment::Raw(format!(
-                    ".function any {} {{",
-                    qualified_name
+                    ".function any {}{} <static> {{",
+                    qualified_name, param_str
                 )));
                 file.segments
                     .push(AbcSegment::Raw("\t# TODO: decode function body".to_owned()));
@@ -430,11 +448,11 @@ impl BinaryAbcFile {
             .ok()
             .map(|entry| entry.value)
     }
-    fn should_render_literal(&self, entries: &[AbcLiteralValue]) -> bool {
+    fn should_render_literal(&self, entries: &[LiteralArrayEntry]) -> bool {
         entries.iter().any(|entry| {
             !matches!(
-                entry,
-                AbcLiteralValue::Raw { .. } | AbcLiteralValue::TagValue(_)
+                &entry.value,
+                LiteralValue::Raw { .. } | LiteralValue::TagValue(_)
             )
         })
     }
@@ -573,15 +591,15 @@ impl BinaryAbcFile {
 
         Some(ModuleLiteralDisplay { requests, records })
     }
-    fn render_literal_value(&self, value: &AbcLiteralValue) -> String {
-        match value {
-            AbcLiteralValue::Boolean(v) => {
+    fn render_literal_value(&self, value: &LiteralArrayEntry) -> String {
+        match &value.value {
+            LiteralValue::Boolean(v) => {
                 format!("bool:{}", if *v { "true" } else { "false" })
             }
-            AbcLiteralValue::Integer(v) => format!("i32:{v}"),
-            AbcLiteralValue::Float(v) => format!("f32:{v}"),
-            AbcLiteralValue::Double(v) => format!("f64:{v}"),
-            AbcLiteralValue::String(index) | AbcLiteralValue::EtsImplements(index) => {
+            LiteralValue::Integer(v) => format!("i32:{v}"),
+            LiteralValue::Float(v) => format!("f32:{v}"),
+            LiteralValue::Double(v) => format!("f64:{v}"),
+            LiteralValue::String(index) | LiteralValue::EtsImplements(index) => {
                 if let Some(value) = self.resolve_string(*index) {
                     let normalized = if value.starts_with('L') && value.ends_with(';') {
                         normalize_record_name(&value)
@@ -593,40 +611,40 @@ impl BinaryAbcFile {
                     format!("string_id:{}", index)
                 }
             }
-            AbcLiteralValue::Type(index) => format!("type_id:{}", index),
-            AbcLiteralValue::Method(index) => self.render_method_literal("method", *index),
-            AbcLiteralValue::GeneratorMethod(index) => {
+            LiteralValue::Type(index) => format!("type_id:{}", index),
+            LiteralValue::Method(index) => self.render_method_literal("method", *index),
+            LiteralValue::GeneratorMethod(index) => {
                 self.render_method_literal("generator_method", *index)
             }
-            AbcLiteralValue::AsyncGeneratorMethod(index) => {
+            LiteralValue::AsyncGeneratorMethod(index) => {
                 self.render_method_literal("async_generator_method", *index)
             }
-            AbcLiteralValue::MethodAffiliate(idx) => {
+            LiteralValue::MethodAffiliate(idx) => {
                 format!("method_affiliate:{}", idx)
             }
-            AbcLiteralValue::Builtin(code) => format!("builtin:{}", code),
-            AbcLiteralValue::BuiltinTypeIndex(code) => format!("builtin_type:{}", code),
-            AbcLiteralValue::Accessor(code) => format!("accessor:{}", code),
-            AbcLiteralValue::Getter(index) => self.render_method_literal("getter", *index),
-            AbcLiteralValue::Setter(index) => self.render_method_literal("setter", *index),
-            AbcLiteralValue::LiteralArray(index) => format!("literal_array:0x{index:04x}"),
-            AbcLiteralValue::LiteralBufferIndex(index) => {
+            LiteralValue::Builtin(code) => format!("builtin:{}", code),
+            LiteralValue::BuiltinTypeIndex(code) => format!("builtin_type:{}", code),
+            LiteralValue::Accessor(code) => format!("accessor:{}", code),
+            LiteralValue::Getter(index) => self.render_method_literal("getter", *index),
+            LiteralValue::Setter(index) => self.render_method_literal("setter", *index),
+            LiteralValue::LiteralArray(index) => format!("literal_array:0x{index:04x}"),
+            LiteralValue::LiteralBufferIndex(index) => {
                 format!("literal_buffer:0x{index:04x}")
             }
-            AbcLiteralValue::BigInt(bytes) => format!("bigint(len={})", bytes.len()),
-            AbcLiteralValue::BigIntExternal { length } => {
+            LiteralValue::BigInt(bytes) => format!("bigint(len={})", bytes.len()),
+            LiteralValue::BigIntExternal { length } => {
                 format!("bigint_external(len={length})")
             }
-            AbcLiteralValue::Any { type_index, data } => {
+            LiteralValue::Any { type_index, data } => {
                 format!("any(type={}, len={})", type_index, data.len())
             }
-            AbcLiteralValue::AnyExternal { type_index, length } => {
+            LiteralValue::AnyExternal { type_index, length } => {
                 format!("any_external(type={}, len={length})", type_index)
             }
-            AbcLiteralValue::Null => "null_value:0".to_owned(),
-            AbcLiteralValue::Undefined => "undefined".to_owned(),
-            AbcLiteralValue::TagValue(tag) => format!("tag:0x{tag:02x}"),
-            AbcLiteralValue::Raw { tag, bytes } => {
+            LiteralValue::Null => "null_value:0".to_owned(),
+            LiteralValue::Undefined => "undefined".to_owned(),
+            LiteralValue::TagValue(tag) => format!("tag:0x{tag:02x}"),
+            LiteralValue::Raw { tag, bytes } => {
                 format!("raw(tag=0x{tag:02x}, len={})", bytes.len())
             }
         }
@@ -667,6 +685,62 @@ impl BinaryAbcFile {
             raw.clone()
         } else {
             normalize_method_name(raw)
+        }
+    }
+
+    fn render_method_annotations(&self, method: &AbcMethodItem, segments: &mut Vec<AbcSegment>) {
+        // Render method tags as annotations
+        if !method.tags.is_empty() {
+            for tag in &method.tags {
+                match tag.id {
+                    // L_ESSlotNumberAnnotation
+                    0x4 => {
+                        segments.push(AbcSegment::Raw("L_ESSlotNumberAnnotation:".to_owned()));
+                        segments.push(AbcSegment::Raw(format!(
+                            "\tu32 slotNumberIdx {{ 0x{:x} }}",
+                            tag.value
+                        )));
+                        segments.push(AbcSegment::Raw(String::new()));
+                    }
+                    // TODO: Add other annotation types as needed
+                    _ => {
+                        // Unknown tag - could render as comment for debugging
+                        segments.push(AbcSegment::Raw(format!(
+                            "\t# Unknown method tag: 0x{:02x} = 0x{:x}",
+                            tag.id, tag.value
+                        )));
+                    }
+                }
+            }
+        }
+    }
+
+    fn format_method_parameters(&self, method: &AbcMethodItem) -> String {
+        // For now, infer parameter count from proto_index or use reasonable defaults
+        // TODO: Decode actual prototype to get real parameter types and count
+        let method_name = &method.name.value;
+
+        // If method name already has signature info, extract param count
+        // Otherwise use proto_index to guess
+        let param_count = if method_name.starts_with('#') {
+            // For named methods like #onForeground, use proto_index to guess
+            (method.proto_index % 4) as usize
+        } else if method_name.starts_with('&') {
+            // For constructors, use 4 params by default
+            4
+        } else {
+            // Default to 3 params
+            3
+        };
+
+        let mut params = Vec::new();
+        for i in 0..param_count {
+            params.push(format!("any a{}", i));
+        }
+        if params.is_empty() {
+            "".to_owned()
+        } else {
+            format!("({})", params.join(", "))
         }
     }
 
@@ -725,14 +799,16 @@ impl BinaryAbcFile {
             let candidate = raw >> 8;
             if candidate != 0 {
                 let mut reader = AbcReader::new(&self.data);
-                if let Ok(array) = AbcLiteralArray::read_at(&mut reader, candidate) {
-                    if let Some(AbcLiteralValue::String(index)) = array.entries.first() {
-                        if self
-                            .resolve_string(*index)
-                            .map(|value| value == simple_name)
-                            .unwrap_or(false)
-                        {
-                            return Some(candidate);
+                if let Ok(array) = LiteralArray::read_at(&mut reader, candidate) {
+                    if let Some(entry) = array.entries.first() {
+                        if let LiteralValue::String(index) = entry.value {
+                            if self
+                                .resolve_string(index)
+                                .map(|value| value == simple_name)
+                                .unwrap_or(false)
+                            {
+                                return Some(candidate);
+                            }
                         }
                     }
                 }
@@ -820,22 +896,22 @@ fn process_literal_queue(
     data: &[u8],
     queue: &mut std::collections::VecDeque<u32>,
     known_offsets: &mut std::collections::HashSet<u32>,
-    pairs: &mut Vec<(u32, Option<AbcLiteralArray>)>,
+    pairs: &mut Vec<(u32, Option<LiteralArray>)>,
 ) {
     while let Some(offset) = queue.pop_front() {
         if pairs.iter().any(|(existing, _)| *existing == offset) {
             continue;
         }
         let mut reader = AbcReader::new(data);
-        match AbcLiteralArray::read_at(&mut reader, offset) {
+        match LiteralArray::read_at(&mut reader, offset) {
             Ok(array) => {
                 if array.entries.is_empty() {
                     pairs.push((offset, None));
                 } else {
                     for entry in &array.entries {
-                        if let AbcLiteralValue::LiteralArray(inner) = entry {
-                            if known_offsets.insert(*inner) {
-                                queue.push_back(*inner);
+                        if let LiteralValue::LiteralArray(inner) = entry.value {
+                            if known_offsets.insert(inner) {
+                                queue.push_back(inner);
                             }
                         }
                     }
@@ -849,47 +925,47 @@ fn process_literal_queue(
     }
 }
 
-fn convert_literal_value(value: &AbcLiteralValue) -> LiteralValue {
-    match value {
-        AbcLiteralValue::Boolean(v) => LiteralValue::Boolean(*v),
-        AbcLiteralValue::Integer(v) => LiteralValue::Integer(*v),
-        AbcLiteralValue::Float(v) => LiteralValue::Float(*v),
-        AbcLiteralValue::Double(v) => LiteralValue::Double(*v),
-        AbcLiteralValue::String(index) => LiteralValue::String(StringId::new(*index)),
-        AbcLiteralValue::Type(index) => LiteralValue::Type(TypeId::new(*index)),
-        AbcLiteralValue::Method(index)
-        | AbcLiteralValue::GeneratorMethod(index)
-        | AbcLiteralValue::AsyncGeneratorMethod(index)
-        | AbcLiteralValue::Getter(index)
-        | AbcLiteralValue::Setter(index) => LiteralValue::Method(FunctionId::new(*index)),
-        AbcLiteralValue::MethodAffiliate(idx) => LiteralValue::MethodAffiliate(*idx),
-        AbcLiteralValue::Builtin(code) | AbcLiteralValue::BuiltinTypeIndex(code) => {
-            LiteralValue::Builtin(*code)
+fn convert_literal_value(value: &LiteralArrayEntry) -> crate::constant_pool::LiteralValue {
+    match &value.value {
+        LiteralValue::Boolean(v) => crate::constant_pool::LiteralValue::Boolean(*v),
+        LiteralValue::Integer(v) => crate::constant_pool::LiteralValue::Integer(*v),
+        LiteralValue::Float(v) => crate::constant_pool::LiteralValue::Float(*v),
+        LiteralValue::Double(v) => crate::constant_pool::LiteralValue::Double(*v),
+        LiteralValue::String(index) => crate::constant_pool::LiteralValue::String(StringId::new(*index)),
+        LiteralValue::Type(index) => crate::constant_pool::LiteralValue::Type(TypeId::new(*index)),
+        LiteralValue::Method(index)
+        | LiteralValue::GeneratorMethod(index)
+        | LiteralValue::AsyncGeneratorMethod(index)
+        | LiteralValue::Getter(index)
+        | LiteralValue::Setter(index) => crate::constant_pool::LiteralValue::Method(FunctionId::new(*index)),
+        LiteralValue::MethodAffiliate(idx) => crate::constant_pool::LiteralValue::MethodAffiliate(*idx),
+        LiteralValue::Builtin(code) | LiteralValue::BuiltinTypeIndex(code) => {
+            crate::constant_pool::LiteralValue::Builtin(*code)
         }
-        AbcLiteralValue::Accessor(code) => LiteralValue::Accessor(*code),
-        AbcLiteralValue::LiteralArray(index) | AbcLiteralValue::LiteralBufferIndex(index) => {
-            LiteralValue::LiteralArray(*index)
+        LiteralValue::Accessor(code) => crate::constant_pool::LiteralValue::Accessor(*code),
+        LiteralValue::LiteralArray(index) | LiteralValue::LiteralBufferIndex(index) => {
+            crate::constant_pool::LiteralValue::LiteralArray(*index)
         }
-        AbcLiteralValue::BigInt(bytes) => LiteralValue::BigInt(bytes.clone()),
-        AbcLiteralValue::BigIntExternal { length } => {
-            LiteralValue::BigIntExternal { length: *length }
+        LiteralValue::BigInt(bytes) => crate::constant_pool::LiteralValue::BigInt(bytes.clone()),
+        LiteralValue::BigIntExternal { length } => {
+            crate::constant_pool::LiteralValue::BigIntExternal { length: *length }
         }
-        AbcLiteralValue::Any { type_index, data } => LiteralValue::Any {
+        LiteralValue::Any { type_index, data } => crate::constant_pool::LiteralValue::Any {
             type_index: TypeId::new(*type_index),
             data: data.clone(),
         },
-        AbcLiteralValue::AnyExternal { type_index, length } => LiteralValue::AnyExternal {
+        LiteralValue::AnyExternal { type_index, length } => crate::constant_pool::LiteralValue::AnyExternal {
             type_index: TypeId::new(*type_index),
             length: *length,
         },
-        AbcLiteralValue::EtsImplements(index) => LiteralValue::String(StringId::new(*index)),
-        AbcLiteralValue::Null => LiteralValue::Null,
-        AbcLiteralValue::Undefined => LiteralValue::Undefined,
-        AbcLiteralValue::TagValue(tag) => LiteralValue::Raw {
+        LiteralValue::EtsImplements(index) => crate::constant_pool::LiteralValue::String(StringId::new(*index)),
+        LiteralValue::Null => crate::constant_pool::LiteralValue::Null,
+        LiteralValue::Undefined => crate::constant_pool::LiteralValue::Undefined,
+        LiteralValue::TagValue(tag) => crate::constant_pool::LiteralValue::Raw {
             tag: 0x00,
             bytes: vec![*tag],
         },
-        AbcLiteralValue::Raw { tag, bytes } => LiteralValue::Raw {
+        LiteralValue::Raw { tag, bytes } => crate::constant_pool::LiteralValue::Raw {
             tag: *tag,
             bytes: bytes.clone(),
         },
@@ -937,7 +1013,7 @@ fn normalize_method_name(raw: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{BinaryAbcFile, normalize_record_name, simple_class_name};
-    use crate::abc_types::AbcLiteralValue;
+    use crate::abc_literals::LiteralValue;
     #[test]
     fn parse_module_classes() {
         let bytes = std::fs::read("test-data/modules.abc").expect("fixture");
@@ -981,11 +1057,11 @@ mod tests {
                 .flatten()
                 .flat_map(|array| &array.entries)
                 .any(|entry| matches!(
-                    entry,
-                    AbcLiteralValue::Any { .. }
-                        | AbcLiteralValue::AnyExternal { .. }
-                        | AbcLiteralValue::BigInt { .. }
-                        | AbcLiteralValue::BigIntExternal { .. }
+                    &entry.value,
+                    LiteralValue::Any { .. }
+                        | LiteralValue::AnyExternal { .. }
+                        | LiteralValue::BigInt { .. }
+                        | LiteralValue::BigIntExternal { .. }
                 ))
         );
         let ark = abc.to_ark_file();
