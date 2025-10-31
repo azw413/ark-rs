@@ -1,0 +1,253 @@
+//! Build script to generate instruction definitions from isa.yaml
+
+use std::collections::HashMap;
+use std::env;
+use std::fs::File;
+use std::io::Write;
+use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct IsaSpec {
+    #[serde(rename = "groups")]
+    groups: Vec<InstructionGroup>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct InstructionGroup {
+    #[serde(rename = "title")]
+    title: Option<String>,
+    #[serde(rename = "instructions")]
+    instructions: Vec<InstructionDef>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct InstructionDef {
+    #[serde(rename = "sig")]
+    signature: String,
+    #[serde(rename = "acc")]
+    accumulator: Option<String>,
+    #[serde(rename = "opcode_idx")]
+    opcode_idx: Vec<String>,
+    #[serde(rename = "format")]
+    format: Vec<String>,
+    #[serde(rename = "prefix")]
+    prefix: Option<String>,
+    #[serde(rename = "properties")]
+    properties: Option<Vec<String>>,
+    #[serde(rename = "description")]
+    description: Option<String>,
+}
+
+fn main() -> std::io::Result<()> {
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let isa_yaml_path = PathBuf::from("specs/isa.yaml");
+
+    println!("cargo:rerun-if-changed={}", isa_yaml_path.display());
+    eprintln!("DEBUG: Attempting to parse: {}", isa_yaml_path.display());
+
+    // Parse ISA specification
+    let isa_spec: IsaSpec = match serde_yaml::from_reader(File::open(&isa_yaml_path)?) {
+        Ok(spec) => {
+            eprintln!("DEBUG: Successfully parsed YAML");
+            spec
+        }
+        Err(e) => {
+            eprintln!("ERROR: Failed to parse isa.yaml: {}", e);
+            eprintln!("Generating empty instruction table");
+            generate_empty_file(&out_dir)?;
+            return Ok(());
+        }
+    };
+
+    // Build instruction tables
+    let (plain_instructions, prefixed_instructions) = build_instruction_tables(&isa_spec);
+
+    eprintln!("DEBUG: Built {} plain and {} prefixed instructions",
+              plain_instructions.len(), prefixed_instructions.len());
+
+    // Generate Rust code
+    generate_rust_code(&out_dir, &plain_instructions, &prefixed_instructions)?;
+
+    Ok(())
+}
+
+#[derive(Debug, Clone)]
+struct InstructionEntry {
+    signature: String,
+    formats: Vec<String>,
+    prefix: Option<String>,
+}
+
+fn build_instruction_tables(
+    spec: &IsaSpec,
+) -> (
+    HashMap<u8, InstructionEntry>,
+    HashMap<(u8, u8), InstructionEntry>,
+) {
+    let mut plain = HashMap::new();
+    let mut prefixed = HashMap::new();
+
+    for group in &spec.groups {
+        for instr in &group.instructions {
+            // Parse opcode indices
+            if let Some(opcode_hex) = instr.opcode_idx.first() {
+                let opcode_byte = parse_hex_u8(opcode_hex);
+
+                if let Some(prefix) = &instr.prefix {
+                    let prefix_byte = match prefix.as_str() {
+                        "throw" => 0xFE,
+                        "wide" => 0xFD,
+                        "deprecated" => 0xFC,
+                        "callruntime" => 0xFB,
+                        _ => continue,
+                    };
+                    prefixed.insert(
+                        (prefix_byte, opcode_byte),
+                        InstructionEntry {
+                            signature: instr.signature.clone(),
+                            formats: instr.format.clone(),
+                            prefix: Some(prefix.clone()),
+                        },
+                    );
+                } else {
+                    plain.insert(
+                        opcode_byte,
+                        InstructionEntry {
+                            signature: instr.signature.clone(),
+                            formats: instr.format.clone(),
+                            prefix: None,
+                        },
+                    );
+                }
+            }
+        }
+    }
+
+    (plain, prefixed)
+}
+
+fn parse_hex_u8(s: &str) -> u8 {
+    // Remove 0x prefix if present and parse
+    let clean = s.trim().strip_prefix("0x").unwrap_or(s.trim());
+    u8::from_str_radix(clean, 16).unwrap_or(0)
+}
+
+fn generate_empty_file(out_dir: &PathBuf) -> std::io::Result<()> {
+    let mut file = File::create(out_dir.join("isa_generated.rs"))?;
+    writeln!(file, "// Auto-generated from isa.yaml - placeholder")?;
+    writeln!(file, "pub const INSTRUCTION_TABLE: &[()] = &[];")?;
+    writeln!(file, "pub const PREFIXED_INSTRUCTION_TABLE: &[()] = &[];")?;
+    Ok(())
+}
+
+fn generate_rust_code(
+    out_dir: &PathBuf,
+    plain: &HashMap<u8, InstructionEntry>,
+    prefixed: &HashMap<(u8, u8), InstructionEntry>,
+) -> std::io::Result<()> {
+    // Write to src/isa_generated.rs so it's included in the build
+    let src_path = PathBuf::from("src/isa_generated.rs");
+    let mut file = File::create(&src_path)?;
+
+    writeln!(file, "//! Auto-generated instruction definitions from isa.yaml")?;
+    writeln!(file, "//! This file is generated by build.rs - do not edit manually")?;
+    writeln!(file)?;
+    writeln!(file, "//! Regenerate with: cargo build")?;
+    writeln!(file)?;
+
+    writeln!(file, "use crate::instructions::InstructionFormat;")?;
+    writeln!(file)?;
+
+    // Generate plain instruction table
+    writeln!(file, "/// Plain (non-prefixed) instruction table indexed by opcode byte")?;
+    writeln!(file, "pub const INSTRUCTION_TABLE: &[Option<InstructionEntry>] = &[")?;
+
+    for byte in 0..=0xFF {
+        if let Some(entry) = plain.get(&byte) {
+            let prefix_byte = entry.prefix.as_ref().map(|p| match p.as_str() {
+                "throw" => 0xFEu8,
+                "wide" => 0xFDu8,
+                "deprecated" => 0xFCu8,
+                "callruntime" => 0xFBu8,
+                _ => 0,
+            });
+            writeln!(
+                file,
+                "    Some(InstructionEntry {{ opcode: 0x{:02x}, signature: \"{}\", format: \"{}\", prefix: {:?} }}),",
+                byte, entry.signature, entry.formats.first().unwrap_or(&"unknown".to_string()), prefix_byte
+            )?;
+        } else {
+            writeln!(file, "    None,")?;
+        }
+    }
+    writeln!(file, "];")?;
+    writeln!(file)?;
+
+    // Generate prefixed instruction table
+    writeln!(file, "/// Prefixed instruction table indexed by (prefix_byte, opcode_byte)")?;
+    writeln!(file, "pub const PREFIXED_INSTRUCTION_TABLE: &[Option<PrefixedInstructionEntry>] = &[")?;
+
+    let mut entries = vec![None; 256 * 256];
+    for ((prefix, opcode), entry) in prefixed {
+        let index = (*prefix as usize) * 256 + (*opcode as usize);
+        entries[index] = Some(PrefixedInstructionEntry {
+            prefix: *prefix,
+            opcode: *opcode,
+            signature: entry.signature.clone(),
+            format: entry.formats.first().unwrap_or(&"unknown".to_string()).clone(),
+        });
+    }
+
+    for entry in entries.iter() {
+        if let Some(e) = entry {
+            writeln!(
+                file,
+                "    Some(PrefixedInstructionEntry {{ prefix: 0x{:02x}, opcode: 0x{:02x}, signature: \"{}\", format: \"{}\" }}),",
+                e.prefix, e.opcode, e.signature, e.format
+            )?;
+        } else {
+            writeln!(file, "    None,")?;
+        }
+    }
+    writeln!(file, "];")?;
+    writeln!(file)?;
+
+    // Generate entry structs
+    writeln!(file, "/// Entry for plain instructions")?;
+    writeln!(
+        file,
+        "pub struct InstructionEntry {{
+    pub opcode: u8,
+    pub signature: &'static str,
+    pub format: &'static str,
+    pub prefix: Option<u8>,
+}}"
+    )?;
+    writeln!(file)?;
+
+    writeln!(file, "/// Entry for prefixed instructions")?;
+    writeln!(
+        file,
+        "pub struct PrefixedInstructionEntry {{
+    pub prefix: u8,
+    pub opcode: u8,
+    pub signature: &'static str,
+    pub format: &'static str,
+}}"
+    )?;
+
+    eprintln!("Generated {} plain and {} prefixed instruction entries to src/isa_generated.rs",
+              plain.len(), prefixed.len());
+
+    Ok(())
+}
+
+#[derive(Debug, Clone)]
+struct PrefixedInstructionEntry {
+    prefix: u8,
+    opcode: u8,
+    signature: String,
+    format: String,
+}

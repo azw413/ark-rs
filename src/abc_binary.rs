@@ -441,9 +441,14 @@ impl BinaryAbcFile {
                     .and_then(|offset| self.class_name_for_offset(offset))
                     .filter(|class_name| !class_name.is_empty())
                     .map(|class_name| {
-                        // Remove existing & wrappers if present, then add one set
-                        let trimmed = class_name.trim_matches('&');
-                        format!("&{}.{}&", trimmed, method_name)
+                        // class_name already has & wrappers from normalize_record_name
+                        // Official format: &class.name&.method& (note the & before .method)
+                        if class_name.starts_with('&') && class_name.ends_with('&') {
+                            // Keep the & wrappers and insert method before final &
+                            format!("{}.{}&", class_name, method_name)
+                        } else {
+                            format!("&{}.{}&", class_name, method_name)
+                        }
                     })
                     .unwrap_or_else(|| format!("&{}&", method_name));
 
@@ -828,6 +833,9 @@ impl BinaryAbcFile {
 
     fn render_method_annotations(&self, method: &AbcMethodItem, segments: &mut Vec<AbcSegment>) {
         // Render method tags as annotations
+        let mut found_slot_annotation = false;
+        let mut slot_number = 0x0;
+
         if !method.tags.is_empty() {
             for tag in &method.tags {
                 match tag.id {
@@ -835,19 +843,45 @@ impl BinaryAbcFile {
                     // Tag 0x16 appears to be the slot number annotation
                     // Value format: 0xSSSS0000 where SSSS is the slot number
                     0x16 => {
-                        let slot_number = (tag.value >> 16) & 0xFFFF;
-                        if slot_number != 0 {
-                            segments.push(AbcSegment::Raw("L_ESSlotNumberAnnotation:".to_owned()));
-                            segments.push(AbcSegment::Raw(format!(
-                                "\tu32 slotNumberIdx {{ 0x{:x} }}",
-                                slot_number
-                            )));
-                            segments.push(AbcSegment::Raw(String::new()));
+                        slot_number = (tag.value >> 16) & 0xFFFF;
+                        segments.push(AbcSegment::Raw("L_ESSlotNumberAnnotation:".to_owned()));
+                        segments.push(AbcSegment::Raw(format!(
+                            "\tu32 slotNumberIdx {{ 0x{:x} }}",
+                            slot_number
+                        )));
+                        segments.push(AbcSegment::Raw(String::new()));
+                        found_slot_annotation = true;
+                    }
+                    // MethodTag from spec: DEBUG_INFO
+                    // Tag 0x05: u32 offset → DebugInfoItem
+                    0x05 => {
+                        segments.push(AbcSegment::Raw(format!(
+                            "\t# DEBUG_INFO: debug info at offset 0x{:x}",
+                            tag.value
+                        )));
+                    }
+                    // MethodTag from spec: ANNOTATION
+                    // Tag 0x06: u32 offset (repeatable) → Annotation
+                    0x06 => {
+                        segments.push(AbcSegment::Raw(format!(
+                            "\t# ANNOTATION: annotation at offset 0x{:x}",
+                            tag.value
+                        )));
+                    }
+                    // Tags 0x1c, 0x1d, 0x1e, 0x21, 0x22, etc.
+                    // These appear to be ArkTS-specific markers where the tag ID might encode
+                    // the slot number. The value is typically 0x20000 (131072).
+                    // Try extracting slot number from tag ID.
+                    0x1c | 0x1d | 0x1e | 0x21 | 0x22 => {
+                        // Check if the tag ID encodes the slot number
+                        // Theory: tag_id * some_factor or tag_id + some_offset
+                        let tag_slot = (tag.id * 2) as u32;
+                        if tag_slot > slot_number {
+                            slot_number = tag_slot;
                         }
                     }
-                    // TODO: Add other annotation types as needed
+                    // Unknown tag - render as comment for debugging
                     _ => {
-                        // Unknown tag - could render as comment for debugging
                         segments.push(AbcSegment::Raw(format!(
                             "\t# Unknown method tag: 0x{:02x} = 0x{:x}",
                             tag.id, tag.value
@@ -855,6 +889,24 @@ impl BinaryAbcFile {
                     }
                 }
             }
+        }
+
+        // If we found slot numbers from other tags, show L_ESSlotNumberAnnotation
+        if found_slot_annotation || slot_number > 0 {
+            // Use the slot number from tag 0x16 or computed from other tags
+            segments.insert(0, AbcSegment::Raw("L_ESSlotNumberAnnotation:".to_owned()));
+            segments.insert(1, AbcSegment::Raw(format!(
+                "\tu32 slotNumberIdx {{ 0x{:x} }}",
+                slot_number
+            )));
+            segments.insert(2, AbcSegment::Raw(String::new()));
+        } else {
+            // Default slot number for methods without explicit annotations
+            segments.push(AbcSegment::Raw("L_ESSlotNumberAnnotation:".to_owned()));
+            segments.push(AbcSegment::Raw(format!(
+                "\tu32 slotNumberIdx {{ 0x0 }}"
+            )));
+            segments.push(AbcSegment::Raw(String::new()));
         }
     }
 

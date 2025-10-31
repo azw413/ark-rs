@@ -13,6 +13,7 @@ pub mod file;
 pub mod functions;
 pub mod header;
 pub mod instructions;
+pub mod isa_generated;
 pub mod parser;
 pub mod types;
 
