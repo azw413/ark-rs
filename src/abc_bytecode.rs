@@ -81,6 +81,7 @@ where
 
     let code_bytes = reader.read_bytes(code_size)?;
     let mut code_reader = AbcReader::new(code_bytes);
+    let code_size_u32 = code_size as u32;
 
     let mut signature_parameters = Vec::with_capacity(parameter_count as usize);
     let mut parameters = Vec::with_capacity(parameter_count as usize);
@@ -102,24 +103,56 @@ where
     let instruction_block = decode_instructions(&mut code_reader, register_count, resolver_ref)?;
 
     let mut exception_handlers = Vec::with_capacity(exception_handler_count);
-    for _ in 0..exception_handler_count {
-        let start = InstructionIndex(reader.read_u32()?);
-        let end = InstructionIndex(reader.read_u32()?);
-        let handler = InstructionIndex(reader.read_u32()?);
-        let exception_type = reader.read_u32()?;
-        let is_finally = reader.read_u8()? != 0;
+    for try_index in 0..exception_handler_count {
+        let try_start = reader.read_uleb128()?;
+        let try_length = reader.read_uleb128()?;
+        let catch_count = reader.read_uleb128()? as usize;
+        if try_start > code_size_u32 {
+            // Skip invalid entry that points beyond the function body
+            for _ in 0..catch_count {
+                let _ = reader.read_uleb128()?; // type index + 1
+                let _ = reader.read_uleb128()?; // handler start
+                let _ = reader.read_uleb128()?; // handler size
+            }
+            continue;
+        }
 
-        exception_handlers.push(ExceptionHandler {
-            start,
-            end,
-            handler,
-            exception_type: if exception_type == u32::MAX {
+        let try_end = try_start.saturating_add(try_length);
+        if try_end > code_size_u32 {
+            for _ in 0..catch_count {
+                let _ = reader.read_uleb128()?;
+                let _ = reader.read_uleb128()?;
+                let _ = reader.read_uleb128()?;
+            }
+            continue;
+        }
+
+        for catch_index in 0..catch_count {
+            let type_plus_one = reader.read_uleb128()?;
+            let handler_start = reader.read_uleb128()?;
+            let handler_size = reader.read_uleb128()?;
+            let handler_end = handler_start.saturating_add(handler_size);
+
+            if handler_start > code_size_u32 || handler_end > code_size_u32 {
+                continue;
+            }
+
+            let exception_type = if type_plus_one == 0 {
                 None
             } else {
-                Some(TypeId::new(exception_type as u32))
-            },
-            is_finally,
-        });
+                Some(TypeId::new(type_plus_one - 1))
+            };
+
+            exception_handlers.push(ExceptionHandler {
+                try_index: try_index as u32,
+                catch_index: catch_index as u32,
+                try_start,
+                try_end,
+                handler_start,
+                handler_end,
+                exception_type,
+            });
+        }
     }
 
     Ok(DecodedFunction {
@@ -186,6 +219,7 @@ fn decode_instruction(
     register_count: u16,
     string_resolver: Option<&dyn Fn(u32) -> Option<String>>,
 ) -> ArkResult<Instruction> {
+    let offset = reader.position() as u32;
     let first_byte = reader.read_u8()?;
 
     let format;
@@ -218,14 +252,32 @@ fn decode_instruction(
     };
     let operands = decode_operands(reader, &format, register_count, string_resolver)?;
 
-    Ok(Instruction {
+    let mut instruction = Instruction {
         index,
         opcode,
         format,
         operands,
         flags: crate::instructions::InstructionFlags::NONE,
         comment: None,
-    })
+        bytecode_offset: offset,
+        byte_length: 0,
+    };
+
+    let end = reader.position() as u32;
+    instruction.byte_length = end.saturating_sub(offset).try_into().unwrap_or(u16::MAX);
+
+    if let Some(target_offset) = branch_target_offset(&instruction, offset) {
+        if let Some((operand_index, _)) = instruction
+            .operands
+            .iter()
+            .enumerate()
+            .find(|(_, operand)| matches!(operand, Operand::Immediate(_)))
+        {
+            instruction.operands[operand_index] = Operand::Label(target_offset);
+        }
+    }
+
+    Ok(instruction)
 }
 
 /// Decodes operands for an instruction based on its format
@@ -839,6 +891,35 @@ fn decode_operands(
     }
 
     Ok(operands)
+}
+
+fn branch_target_offset(instruction: &Instruction, current_offset: u32) -> Option<u32> {
+    use Opcode::*;
+
+    let immediate = match instruction.opcode {
+        JmpImm8 | JEqzImm8 | JNezImm8 | JStrictEqzImm8 | JNStrictEqzImm8 | JmpImm16 | JEqzImm16
+        | JNezImm16 | JStrictEqzImm16 | JNStrictEqzImm16 | JmpImm32 | JEqzImm32 | JNezImm32 => {
+            extract_first_immediate(&instruction.operands)?
+        }
+        _ => return None,
+    };
+
+    let target = current_offset as i64 + immediate;
+    if target < 0 {
+        None
+    } else {
+        Some(target as u32)
+    }
+}
+
+fn extract_first_immediate(operands: &[Operand]) -> Option<i64> {
+    operands.iter().find_map(|operand| match operand {
+        Operand::Immediate(ImmediateOperand::Imm8(value)) => Some((*value as i8) as i64),
+        Operand::Immediate(ImmediateOperand::Imm16(value)) => Some((*value as i16) as i64),
+        Operand::Immediate(ImmediateOperand::Imm32(value)) => Some((*value as i32) as i64),
+        Operand::Immediate(ImmediateOperand::Imm64(value)) => Some(*value as i64),
+        _ => None,
+    })
 }
 
 fn signature_to_mnemonic(signature: &'static str) -> &'static str {

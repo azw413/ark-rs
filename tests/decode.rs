@@ -74,3 +74,22 @@ fn binary_method_index_resolves_code_offsets() {
     let entry_func_main = find_method(&binary.methods, "func_main_0");
     assert_eq!(code_map.get(&entry_func_main.name.offset), Some(&0x1cc6));
 }
+
+#[test]
+fn inspect_on_backup_exception_ranges() {
+    let data = std::fs::read("test-data/modules.abc").expect("read modules.abc");
+    let signature = FunctionSignature::new(
+        Vec::new(),
+        FieldType::new(TypeDescriptor::Primitive(PrimitiveType::Any)),
+    );
+
+    let function = decode_function_body(&data, 0x1d26, FunctionId::new(0), None, signature)
+        .expect("decode onBackup");
+
+    assert!(!function.exception_handlers.is_empty());
+    let handler = &function.exception_handlers[0];
+    assert!(handler.try_start < handler.try_end);
+    assert!(handler.handler_start >= handler.try_end);
+    assert!(handler.handler_end > handler.handler_start);
+    assert!(handler.exception_type.is_none());
+}

@@ -646,6 +646,8 @@ pub struct Instruction {
     pub operands: Vec<Operand>,
     pub flags: InstructionFlags,
     pub comment: Option<String>,
+    pub bytecode_offset: u32,
+    pub byte_length: u16,
 }
 
 impl Instruction {
@@ -658,6 +660,8 @@ impl Instruction {
             operands: Vec::new(),
             flags: InstructionFlags::NONE,
             comment: None,
+            bytecode_offset: 0,
+            byte_length: 0,
         }
     }
 

@@ -3,7 +3,7 @@
 use crate::attributes::DebugInfo;
 use crate::constant_pool::ConstantPool;
 use crate::disassembly::format_function;
-use crate::instructions::{Instruction, InstructionIndex};
+use crate::instructions::Instruction;
 use crate::types::{FieldType, FunctionId, FunctionSignature, StringId, TypeId};
 
 /// Categorises functions within an Ark module.
@@ -86,11 +86,13 @@ pub struct InstructionBlock {
 /// Exception handler metadata describing try/catch/finally ranges.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExceptionHandler {
-    pub start: InstructionIndex,
-    pub end: InstructionIndex,
-    pub handler: InstructionIndex,
+    pub try_index: u32,
+    pub catch_index: u32,
+    pub try_start: u32,
+    pub try_end: u32,
+    pub handler_start: u32,
+    pub handler_end: u32,
     pub exception_type: Option<TypeId>,
-    pub is_finally: bool,
 }
 
 /// Core representation of a function body in Ark bytecode.

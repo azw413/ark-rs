@@ -1,5 +1,6 @@
 //! Helpers for formatting Ark bytecode structures into the textual disassembly form.
 
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::{self, Write};
 
 use crate::constant_pool::ConstantPool;
@@ -38,11 +39,68 @@ pub fn write_function<W: Write>(mut w: W, function: &Function, pool: &ConstantPo
 
     writeln!(w, ") {{")?;
 
+    let mut flat_instructions = Vec::new();
     for block in &function.instruction_block.blocks {
         for instruction in &block.instructions {
+            flat_instructions.push(instruction);
+        }
+    }
+
+    let mut label_map: BTreeMap<u32, Vec<String>> = BTreeMap::new();
+    let mut branch_lookup: HashMap<u32, String> = HashMap::new();
+    let mut branch_order: Vec<(u32, String)> = Vec::new();
+
+    for instruction in &flat_instructions {
+        for operand in &instruction.operands {
+            if let Operand::Label(offset) = operand {
+                if !branch_lookup.contains_key(offset) {
+                    let name = format!("jump_label_{}", branch_order.len());
+                    branch_lookup.insert(*offset, name.clone());
+                    branch_order.push((*offset, name));
+                }
+            }
+        }
+    }
+
+    for (offset, name) in &branch_order {
+        add_label(&mut label_map, *offset, name.clone());
+    }
+
+    for handler in &function.exception_handlers {
+        add_label(
+            &mut label_map,
+            handler.try_start,
+            format!("try_begin_label_{}", handler.try_index),
+        );
+        add_label(
+            &mut label_map,
+            handler.try_end,
+            format!("try_end_label_{}", handler.try_index),
+        );
+        add_label(
+            &mut label_map,
+            handler.handler_end,
+            format!(
+                "handler_end_label_{}_{}",
+                handler.try_index, handler.catch_index
+            ),
+        );
+    }
+
+    let mut printed_label_offsets = BTreeSet::new();
+
+    for block in &function.instruction_block.blocks {
+        for instruction in &block.instructions {
+            if let Some(labels) = label_map.get(&instruction.bytecode_offset) {
+                for label in labels {
+                    writeln!(w, "{}:", label)?;
+                }
+                printed_label_offsets.insert(instruction.bytecode_offset);
+            }
+
             let mnemonic = instruction.opcode.mnemonic();
             write!(w, "    {}", mnemonic)?;
-            let operands = format_operands(&instruction.operands, pool);
+            let operands = format_operands(&instruction.operands, pool, &branch_lookup);
             if !operands.is_empty() {
                 write!(w, " ")?;
                 for (index, operand) in operands.iter().enumerate() {
@@ -56,12 +114,61 @@ pub fn write_function<W: Write>(mut w: W, function: &Function, pool: &ConstantPo
         }
     }
 
+    for (offset, labels) in &label_map {
+        if printed_label_offsets.contains(offset) {
+            continue;
+        }
+        for label in labels {
+            writeln!(w, "{}:", label)?;
+        }
+        printed_label_offsets.insert(*offset);
+    }
+
     writeln!(w)?;
+
+    if !function.exception_handlers.is_empty() {
+        for handler in &function.exception_handlers {
+            if let Some(type_id) = handler.exception_type {
+                writeln!(
+                    w,
+                    ".catch type#{}, try_begin_label_{}, try_end_label_{}, try_end_label_{}, handler_end_label_{}_{}",
+                    type_id.0,
+                    handler.try_index,
+                    handler.try_index,
+                    handler.try_index,
+                    handler.try_index,
+                    handler.catch_index
+                )?;
+            } else {
+                writeln!(
+                    w,
+                    ".catchall try_begin_label_{}, try_end_label_{}, try_end_label_{}, handler_end_label_{}_{}",
+                    handler.try_index,
+                    handler.try_index,
+                    handler.try_index,
+                    handler.try_index,
+                    handler.catch_index
+                )?;
+            }
+        }
+    }
+
     writeln!(w, "}}")?;
     Ok(())
 }
 
-fn format_operands(operands: &[Operand], pool: &ConstantPool) -> Vec<String> {
+fn add_label(labels: &mut BTreeMap<u32, Vec<String>>, offset: u32, label: String) {
+    let entry = labels.entry(offset).or_default();
+    if !entry.iter().any(|existing| existing == &label) {
+        entry.push(label);
+    }
+}
+
+fn format_operands(
+    operands: &[Operand],
+    pool: &ConstantPool,
+    label_lookup: &HashMap<u32, String>,
+) -> Vec<String> {
     operands
         .iter()
         .map(|operand| match operand {
@@ -77,7 +184,10 @@ fn format_operands(operands: &[Operand], pool: &ConstantPool) -> Vec<String> {
             Operand::Function(function_id) => format!("func#{}", function_id.0),
             Operand::MethodHandle(handle_id) => format!("methodhandle#{}", handle_id),
             Operand::LiteralIndex(index) => format!("literal#{}", index),
-            Operand::Label(label) => format!("+0x{:x}", label),
+            Operand::Label(label) => label_lookup
+                .get(label)
+                .cloned()
+                .unwrap_or_else(|| format!("+0x{:x}", label)),
             Operand::ConditionCode(code) => format!("{:?}", code).to_ascii_lowercase(),
             Operand::Comparison(kind) => format!("{:?}", kind).to_ascii_lowercase(),
         })
@@ -663,7 +773,7 @@ mod tests {
         assert_eq!(cases.len(), 58);
 
         for (format, operands, expected) in cases {
-            let rendered = format_operands(&operands, &pool).join(", ");
+            let rendered = format_operands(&operands, &pool, &HashMap::new()).join(", ");
             assert_eq!(rendered, expected, "format {:?}", format);
         }
     }
@@ -676,7 +786,11 @@ mod tests {
             value: "hello".to_owned(),
         });
 
-        let rendered = format_operands(&[Operand::Identifier(IdentifierOperand::Id16(0))], &pool);
+        let rendered = format_operands(
+            &[Operand::Identifier(IdentifierOperand::Id16(0))],
+            &pool,
+            &HashMap::new(),
+        );
 
         assert_eq!(rendered, vec!["\"hello\"".to_owned()]);
     }
