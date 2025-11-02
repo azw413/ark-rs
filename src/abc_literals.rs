@@ -178,8 +178,8 @@ impl LiteralArray {
                     }
                     let length = reader.read_u32()?;
                     let elem_size = match tag {
-                        0x0b => ((length as usize) + 7) / 8,  // bit array
-                        0x0c | 0x0d => length as usize,         // byte/short array
+                        0x0b => ((length as usize) + 7) / 8,                // bit array
+                        0x0c | 0x0d => length as usize,                     // byte/short array
                         0x0e | 0x0f => (length as usize).saturating_mul(2), // word/dword array
                         0x10 | 0x11 | 0x13 => (length as usize).saturating_mul(4), // dword/qword array
                         0x12 | 0x14 | 0x15 => (length as usize).saturating_mul(8), // qword/dqword array
@@ -392,15 +392,13 @@ impl LiteralScanner {
                 let has_valid_refs = array.entries.iter().any(|entry| {
                     matches!(
                         entry.value,
-                        LiteralValue::String(_) | LiteralValue::Method(_) | LiteralValue::Integer(_)
+                        LiteralValue::String(_)
+                            | LiteralValue::Method(_)
+                            | LiteralValue::Integer(_)
                     )
                 });
 
-                if has_valid_refs {
-                    Some(array)
-                } else {
-                    None
-                }
+                if has_valid_refs { Some(array) } else { None }
             }
             Err(_) => None,
         }
@@ -464,7 +462,7 @@ mod tests {
         // Format: u32 count=6 (3 entries), then (tag, value) pairs
         // Note: count field represents number of entries to read
         let mut data = Vec::new();
-        data.extend_from_slice(&6u32.to_le_bytes());  // 3 entries
+        data.extend_from_slice(&6u32.to_le_bytes()); // 3 entries
         data.push(0x02); // tag: integer
         data.extend_from_slice(&1u32.to_le_bytes());
         data.push(0x05); // tag: string
@@ -479,7 +477,10 @@ mod tests {
         assert_eq!(array.entries[0].tag, 0x02);
         assert!(matches!(array.entries[0].value, LiteralValue::Integer(1)));
         assert_eq!(array.entries[1].tag, 0x05);
-        assert!(matches!(array.entries[1].value, LiteralValue::String(0x100)));
+        assert!(matches!(
+            array.entries[1].value,
+            LiteralValue::String(0x100)
+        ));
         assert_eq!(array.entries[2].tag, 0x02);
         assert!(matches!(array.entries[2].value, LiteralValue::Integer(0)));
         // byte_len is the data size (after count field), not including count
@@ -582,7 +583,10 @@ mod tests {
 
         // At least some should be valid
         let valid_count = results.iter().filter(|(_, arr)| arr.is_some()).count();
-        assert!(valid_count > 0, "Should find at least one valid literal array");
+        assert!(
+            valid_count > 0,
+            "Should find at least one valid literal array"
+        );
     }
 
     #[test]
@@ -607,7 +611,10 @@ mod tests {
         let array = LiteralArray::read_at(&mut reader, 0).unwrap();
 
         assert_eq!(array.entries.len(), 4);
-        assert!(matches!(array.entries[0].value, LiteralValue::Boolean(true)));
+        assert!(matches!(
+            array.entries[0].value,
+            LiteralValue::Boolean(true)
+        ));
         assert!(matches!(array.entries[1].value, LiteralValue::Integer(42)));
         assert!(matches!(array.entries[2].value, LiteralValue::Float(_)));
         assert!(matches!(array.entries[3].value, LiteralValue::Double(_)));
@@ -629,7 +636,10 @@ mod tests {
         let array = LiteralArray::read_at(&mut reader, 0).unwrap();
 
         assert_eq!(array.entries.len(), 2);
-        assert!(matches!(array.entries[1].value, LiteralValue::LiteralArray(0x200)));
+        assert!(matches!(
+            array.entries[1].value,
+            LiteralValue::LiteralArray(0x200)
+        ));
     }
 
     #[test]
@@ -662,6 +672,6 @@ mod tests {
         // Verify byte length is calculated correctly
         // byte_len is the data size (after count field): 2 + 2 + 5 + 9 = 18 bytes
         // But the total array size is 4 (count) + 18 (data) = 22 bytes
-        assert_eq!(array.byte_len, 18);  // Data size only, not including count
+        assert_eq!(array.byte_len, 18); // Data size only, not including count
     }
 }

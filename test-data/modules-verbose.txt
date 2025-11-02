@@ -1,0 +1,2052 @@
+# source binary: modules.abc
+
+.language ECMAScript
+
+# ====================
+# LITERALS
+
+0 0x1812 { 3 [ i32:1, string:"DOMAIN", i32:0, ]}
+1 0x17ef { 7 [ string:"onBackup", method:#~@0>#onBackup, method_affiliate:0, string:"onRestore", method:#~@0>#onRestore, method_affiliate:1, i32:2, ]}
+11 0x173c { 19 [ string:"onCreate", method:#~@0>#onCreate, method_affiliate:2, string:"onDestroy", method:#~@0>#onDestroy, method_affiliate:0, string:"onWindowStageCreate", method:#~@0>#onWindowStageCreate, method_affiliate:1, string:"onWindowStageDestroy", method:#~@0>#onWindowStageDestroy, method_affiliate:0, string:"onForeground", method:#~@0>#onForeground, method_affiliate:0, string:"onBackground", method:#~@0>#onBackground, method_affiliate:0, i32:6, ]}
+13 0x1882 { 4 [ string:"center", null_value:0, string:"middle", null_value:0, ]}
+14 0x17a6 { 1 [ string:"EntryBackupAbility", ]}
+15 0x18a9 { 4 [ string:"anchor", string:"__container__", string:"align", null_value:0, ]}
+16 0x1825 { 2 [ string:"Index", string:"initialRender", ]}
+17 0x1918 { 12 [ string:"bundleName", string:"com.example.myapplication", string:"moduleName", string:"entry", string:"pagePath", string:"pages/Index", string:"pageFullPath", string:"entry/src/main/ets/pages/Index", string:"integratedHsp", string:"false", string:"moduleType", string:"followWithHap", ]}
+2 0x1793 { 3 [ i32:1, string:"DOMAIN", i32:0, ]}
+3 0x18be { 5 [ i32:2, string:"4newTarget", i32:0, string:"this", i32:1, ]}
+4 0x1894 { 4 [ string:"anchor", string:"__container__", string:"align", null_value:0, ]}
+5 0x184f { 10 [ string:"id", i32:16777224, string:"type", i32:10002, string:"params", null_value:0, string:"bundleName", string:"com.example.myapplication", string:"moduleName", string:"entry", ]}
+6 0x1958 { 7 [ i32:3, string:"Index", i32:0, string:"4newTarget", i32:1, string:"this", i32:2, ]}
+7 0x18db { 13 [ string:"setInitiallyProvidedValue", method:#~@0>#setInitiallyProvidedValue, method_affiliate:1, string:"updateStateVars", method:#~@0>#updateStateVars, method_affiliate:1, string:"purgeVariableDependenciesOnElmtId", method:#~@0>#purgeVariableDependenciesOnElmtId, method_affiliate:1, string:"aboutToBeDeleted", method:#~@0>#aboutToBeDeleted, method_affiliate:0, i32:4, ]}
+8 0x171f { 5 [ i32:2, string:"4newTarget", i32:0, string:"this", i32:1, ]}
+9 0x16c3 { 2 [ string:"EntryAbility", string:"onWindowStageCreate", ]}
+10 0x1833 { 0 [
+	MODULE_REQUEST_ARRAY: {
+	};
+]}
+12 0x17af { 3 [
+	MODULE_REQUEST_ARRAY: {
+		0 : @ohos:hilog,
+		1 : @ohos:application.BackupExtensionAbility,
+	};
+	ModuleTag: REGULAR_IMPORT, local_name: BackupExtensionAbility, import_name: default, module_request: @ohos:application.BackupExtensionAbility;
+	ModuleTag: REGULAR_IMPORT, local_name: hilog, import_name: default, module_request: @ohos:hilog;
+	ModuleTag: LOCAL_EXPORT, local_name: EntryBackupAbility, export_name: default;
+]}
+18 0x16d1 { 4 [
+	MODULE_REQUEST_ARRAY: {
+		0 : @ohos:app.ability.ConfigurationConstant,
+		1 : @ohos:app.ability.UIAbility,
+		2 : @ohos:hilog,
+	};
+	ModuleTag: REGULAR_IMPORT, local_name: ConfigurationConstant, import_name: default, module_request: @ohos:app.ability.ConfigurationConstant;
+	ModuleTag: REGULAR_IMPORT, local_name: UIAbility, import_name: default, module_request: @ohos:app.ability.UIAbility;
+	ModuleTag: REGULAR_IMPORT, local_name: hilog, import_name: default, module_request: @ohos:hilog;
+	ModuleTag: LOCAL_EXPORT, local_name: EntryAbility, export_name: default;
+]}
+
+# ====================
+# RECORDS
+
+.record &entry.src.main.ets.entryability.EntryAbility& { # offset: 0x0284, size: 0x0180 (384)
+	u8 pkgName@entry = 0x0                                                          # offset: 0x02c0
+	u8 isCommonjs = 0x0                                                             # offset: 0x02cc
+	u8 hasTopLevelAwait = 0x0                                                       # offset: 0x02d8
+	u8 isSharedModule = 0x0                                                         # offset: 0x02e4
+	u32 scopeNames = 0x16c3                                                         # offset: 0x02f0
+	u32 moduleRecordIdx = 0x16d1                                                    # offset: 0x02ff
+}
+
+.record &entry.src.main.ets.entrybackupability.EntryBackupAbility& { # offset: 0x048f, size: 0x0106 (262)
+	u8 pkgName@entry = 0x0                                                          # offset: 0x04d7
+	u8 isCommonjs = 0x0                                                             # offset: 0x04e3
+	u8 hasTopLevelAwait = 0x0                                                       # offset: 0x04ef
+	u8 isSharedModule = 0x0                                                         # offset: 0x04fb
+	u32 scopeNames = 0x17a6                                                         # offset: 0x0507
+	u32 moduleRecordIdx = 0x17af                                                    # offset: 0x0516
+}
+
+.record &entry.src.main.ets.pages.Index& { # offset: 0x0595, size: 0x0237 (567)
+	u8 pkgName@entry = 0x0                                                          # offset: 0x05c3
+	u8 isCommonjs = 0x0                                                             # offset: 0x05cf
+	u8 hasTopLevelAwait = 0x0                                                       # offset: 0x05db
+	u8 isSharedModule = 0x0                                                         # offset: 0x05e7
+	u32 scopeNames = 0x1825                                                         # offset: 0x05f3
+	u32 moduleRecordIdx = 0x1833                                                    # offset: 0x0602
+}
+
+.record @ohos.app { # offset: 0x07cc, size: 0x0023 (35)
+	u8 @native.ohos.app = 0x0                                                       # offset: 0x07e3
+}
+
+.record @ohos.curves { # offset: 0x07ef, size: 0x0026 (38)
+	u8 @native.ohos.curves = 0x0                                                    # offset: 0x0809
+}
+
+.record @ohos.matrix4 { # offset: 0x0815, size: 0x0027 (39)
+	u8 @native.ohos.matrix4 = 0x0                                                   # offset: 0x0830
+}
+
+.record @system.app { # offset: 0x083c, size: 0x0025 (37)
+	u8 @native.system.app = 0x0                                                     # offset: 0x0855
+}
+
+.record @system.curves { # offset: 0x0861, size: 0x0028 (40)
+	u8 @native.system.curves = 0x0                                                  # offset: 0x087d
+}
+
+.record @system.matrix4 { # offset: 0x0889, size: 0x0029 (41)
+	u8 @native.system.matrix4 = 0x0                                                 # offset: 0x08a6
+}
+
+.record @system.router { # offset: 0x08b2, size: 0x0028 (40)
+	u8 @native.system.router = 0x0                                                  # offset: 0x08ce
+}
+
+.record _ESConcurrentModuleRequestsAnnotation { # offset: 0x0404, size: 0x0034 (52)
+}
+
+.record _ESExpectedPropertyCountAnnotation { # offset: 0x0438, size: 0x0031 (49)
+}
+
+.record _ESSlotNumberAnnotation { # offset: 0x0469, size: 0x0026 (38)
+}
+
+# ====================
+# METHODS
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x0 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0=#EntryAbility(any a0, any a1, any a2, any a3) <static> { # offset: 0x037c, code offset: 0x1a4f
+#   CODE:
+	mov v0, a0                             # offset: 0x1a53, [V4_V4].............[0x44 0x60]
+	mov v1, a1                             # offset: 0x1a55, [V4_V4].............[0x44 0x71]
+	mov v2, a2                             # offset: 0x1a57, [V4_V4].............[0x44 0x82]
+	mov v3, a3                             # offset: 0x1a59, [V4_V4].............[0x44 0x93]
+	lda v0                                 # offset: 0x1a5b, [V8]................[0x60 0x00]
+	sta v5                                 # offset: 0x1a5d, [V8]................[0x61 0x05]
+	callruntime.supercallforwardallargs v5 # offset: 0x1a5f, [PREF_V8]...........[0xfb 0x19 0x05]
+	sta v5                                 # offset: 0x1a62, [V8]................[0x61 0x05]
+	lda v2                                 # offset: 0x1a64, [V8]................[0x60 0x02]
+	throw.ifsupernotcorrectcall 0x1        # offset: 0x1a66, [PREF_IMM8].........[0xfe 0x07 0x01]
+	lda v5                                 # offset: 0x1a69, [V8]................[0x60 0x05]
+	sta v2                                 # offset: 0x1a6b, [V8]................[0x61 0x02]
+	lda v2                                 # offset: 0x1a6d, [V8]................[0x60 0x02]
+	throw.ifsupernotcorrectcall 0x0        # offset: 0x1a6f, [PREF_IMM8].........[0xfe 0x07 0x00]
+	return                                 # offset: 0x1a72, [NONE]..............[0x64]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 0: 8
+#	line 18446744073709551615: 26
+#	line 0: 31
+
+#   COLUMN_NUMBER_TABLE:
+#	column 0: 8
+#	column 18446744073709551615: 26
+#	column 0: 31
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	     8    32     0(v0)       4funcObj   any
+#	     8    32     1(v1)     4newTarget   any
+#	     8    32     3(v3)           args   any
+#	     8    32     2(v2)           this   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x4 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>#onBackground(any a0, any a1, any a2) <static> { # offset: 0x0398, code offset: 0x1a73
+#   CODE:
+	mov v0, a0                             # offset: 0x1a77, [V4_V4].............[0x44 0xa0]
+	mov v1, a1                             # offset: 0x1a79, [V4_V4].............[0x44 0xb1]
+	mov v2, a2                             # offset: 0x1a7b, [V4_V4].............[0x44 0xc2]
+	ldexternalmodulevar 0x2                # offset: 0x1a7d, [IMM8]..............[0x7e 0x02]
+	throw.undefinedifholewithname "hilog"  # offset: 0x1a7f, [PREF_ID16].........[0xfe 0x09 0x13 0x00]
+	sta v5                                 # offset: 0x1a83, [V8]................[0x61 0x05]
+	lda v5                                 # offset: 0x1a85, [V8]................[0x60 0x05]
+	ldobjbyname 0x0, "info"                # offset: 0x1a87, [IMM8_ID16].........[0x42 0x00 0x14 0x00]
+	sta v4                                 # offset: 0x1a8b, [V8]................[0x61 0x04]
+	ldlexvar 0x0, 0x0                      # offset: 0x1a8d, [IMM4_IMM4].........[0x3c 0x00]
+	throw.undefinedifholewithname "DOMAIN" # offset: 0x1a8f, [PREF_ID16].........[0xfe 0x09 0x0a 0x00]
+	sta v6                                 # offset: 0x1a93, [V8]................[0x61 0x06]
+	lda.str "testTag"                      # offset: 0x1a95, [ID16]..............[0x3e 0x1a 0x00]
+	sta v7                                 # offset: 0x1a98, [V8]................[0x61 0x07]
+	lda.str "%{public}s"                   # offset: 0x1a9a, [ID16]..............[0x3e 0x00 0x00]
+	sta v8                                 # offset: 0x1a9d, [V8]................[0x61 0x08]
+	lda.str "Ability onBackground"         # offset: 0x1a9f, [ID16]..............[0x3e 0x01 0x00]
+	sta v9                                 # offset: 0x1aa2, [V8]................[0x61 0x09]
+	lda v4                                 # offset: 0x1aa4, [V8]................[0x60 0x04]
+	callthisrange 0x2, 0x4, v5             # offset: 0x1aa6, [IMM8_IMM8_V8]......[0x31 0x02 0x04 0x05]
+	ldundefined                            # offset: 0x1aaa, [NONE]..............[0x00]
+	returnundefined                        # offset: 0x1aab, [NONE]..............[0x65]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 36: 6
+#	line 18446744073709551615: 51
+#	line 37: 52
+
+#   COLUMN_NUMBER_TABLE:
+#	column 8: 6
+#	column 19: 22
+#	column 27: 30
+#	column 38: 35
+#	column 52: 40
+#	column 8: 45
+#	column 18446744073709551615: 51
+#	column 5: 52
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	     6    53     0(v0)       4funcObj   any
+#	     6    53     1(v1)     4newTarget   any
+#	     6    53     2(v2)           this   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x12 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>#onCreate(any a0, any a1, any a2, any a3, any a4) <static> { # offset: 0x0346, code offset: 0x1aac
+#   CODE:
+	mov v0, a0                                            # offset: 0x1ab0, [V4_V4].............[0x44 0xc0]
+	mov v1, a1                                            # offset: 0x1ab2, [V4_V4].............[0x44 0xd1]
+	mov v2, a2                                            # offset: 0x1ab4, [V4_V4].............[0x44 0xe2]
+	mov v3, a3                                            # offset: 0x1ab6, [V4_V4].............[0x44 0xf3]
+	mov v4, a4                                            # offset: 0x1ab8, [V8_V8].............[0x45 0x04 0x10]
+	lda v2                                                # offset: 0x1abb, [V8]................[0x60 0x02]
+	sta v10                                               # offset: 0x1abd, [V8]................[0x61 0x0a]
+	lda v10                                               # offset: 0x1abf, [V8]................[0x60 0x0a]
+	ldobjbyname 0x0, "context"                            # offset: 0x1ac1, [IMM8_ID16].........[0x42 0x00 0x10 0x00]
+	sta v9                                                # offset: 0x1ac5, [V8]................[0x61 0x09]
+	lda v9                                                # offset: 0x1ac7, [V8]................[0x60 0x09]
+	ldobjbyname 0x2, "getApplicationContext"              # offset: 0x1ac9, [IMM8_ID16].........[0x42 0x02 0x12 0x00]
+	sta v8                                                # offset: 0x1acd, [V8]................[0x61 0x08]
+	lda v8                                                # offset: 0x1acf, [V8]................[0x60 0x08]
+	callthis0 0x4, v9                                     # offset: 0x1ad1, [IMM8_V8]...........[0x2d 0x04 0x09]
+	sta v7                                                # offset: 0x1ad4, [V8]................[0x61 0x07]
+	lda v7                                                # offset: 0x1ad6, [V8]................[0x60 0x07]
+	ldobjbyname 0x6, "setColorMode"                       # offset: 0x1ad8, [IMM8_ID16].........[0x42 0x06 0x18 0x00]
+	sta v6                                                # offset: 0x1adc, [V8]................[0x61 0x06]
+	ldexternalmodulevar 0x0                               # offset: 0x1ade, [IMM8]..............[0x7e 0x00]
+	throw.undefinedifholewithname "ConfigurationConstant" # offset: 0x1ae0, [PREF_ID16].........[0xfe 0x09 0x09 0x00]
+	sta v9                                                # offset: 0x1ae4, [V8]................[0x61 0x09]
+	lda v9                                                # offset: 0x1ae6, [V8]................[0x60 0x09]
+	ldobjbyname 0x8, "ColorMode"                          # offset: 0x1ae8, [IMM8_ID16].........[0x42 0x08 0x08 0x00]
+	sta v8                                                # offset: 0x1aec, [V8]................[0x61 0x08]
+	lda v8                                                # offset: 0x1aee, [V8]................[0x60 0x08]
+	ldobjbyname 0xa, "COLOR_MODE_NOT_SET"                 # offset: 0x1af0, [IMM8_ID16].........[0x42 0x0a 0x07 0x00]
+	sta v8                                                # offset: 0x1af4, [V8]................[0x61 0x08]
+	lda v6                                                # offset: 0x1af6, [V8]................[0x60 0x06]
+	callthis1 0xc, v7, v8                                 # offset: 0x1af8, [IMM8_V8_V8]........[0x2e 0x0c 0x07 0x08]
+	ldexternalmodulevar 0x2                               # offset: 0x1afc, [IMM8]..............[0x7e 0x02]
+	throw.undefinedifholewithname "hilog"                 # offset: 0x1afe, [PREF_ID16].........[0xfe 0x09 0x13 0x00]
+	sta v7                                                # offset: 0x1b02, [V8]................[0x61 0x07]
+	lda v7                                                # offset: 0x1b04, [V8]................[0x60 0x07]
+	ldobjbyname 0xe, "info"                               # offset: 0x1b06, [IMM8_ID16].........[0x42 0x0e 0x14 0x00]
+	sta v6                                                # offset: 0x1b0a, [V8]................[0x61 0x06]
+	ldlexvar 0x0, 0x0                                     # offset: 0x1b0c, [IMM4_IMM4].........[0x3c 0x00]
+	throw.undefinedifholewithname "DOMAIN"                # offset: 0x1b0e, [PREF_ID16].........[0xfe 0x09 0x0a 0x00]
+	sta v8                                                # offset: 0x1b12, [V8]................[0x61 0x08]
+	lda.str "testTag"                                     # offset: 0x1b14, [ID16]..............[0x3e 0x1a 0x00]
+	sta v9                                                # offset: 0x1b17, [V8]................[0x61 0x09]
+	lda.str "%{public}s"                                  # offset: 0x1b19, [ID16]..............[0x3e 0x00 0x00]
+	sta v10                                               # offset: 0x1b1c, [V8]................[0x61 0x0a]
+	lda.str "Ability onCreate"                            # offset: 0x1b1e, [ID16]..............[0x3e 0x02 0x00]
+	sta v11                                               # offset: 0x1b21, [V8]................[0x61 0x0b]
+	lda v6                                                # offset: 0x1b23, [V8]................[0x60 0x06]
+	callthisrange 0x10, 0x4, v7                           # offset: 0x1b25, [IMM8_IMM8_V8]......[0x31 0x10 0x04 0x07]
+	ldundefined                                           # offset: 0x1b29, [NONE]..............[0x00]
+	returnundefined                                       # offset: 0x1b2a, [NONE]..............[0x65]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 9: 11
+#	line 10: 76
+#	line 18446744073709551615: 121
+#	line 11: 122
+
+#   COLUMN_NUMBER_TABLE:
+#	column 8: 11
+#	column 58: 46
+#	column 8: 70
+#	column 19: 92
+#	column 27: 100
+#	column 38: 105
+#	column 52: 110
+#	column 8: 115
+#	column 18446744073709551615: 121
+#	column 5: 122
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	    11   123     0(v0)       4funcObj   any
+#	    11   123     1(v1)     4newTarget   any
+#	    11   123     4(v4)    launchParam   any
+#	    11   123     2(v2)           this   any
+#	    11   123     3(v3)           want   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x4 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>#onDestroy(any a0, any a1, any a2) <static> { # offset: 0x0361, code offset: 0x1b2b
+#   CODE:
+	mov v0, a0                             # offset: 0x1b2f, [V4_V4].............[0x44 0xa0]
+	mov v1, a1                             # offset: 0x1b31, [V4_V4].............[0x44 0xb1]
+	mov v2, a2                             # offset: 0x1b33, [V4_V4].............[0x44 0xc2]
+	ldexternalmodulevar 0x2                # offset: 0x1b35, [IMM8]..............[0x7e 0x02]
+	throw.undefinedifholewithname "hilog"  # offset: 0x1b37, [PREF_ID16].........[0xfe 0x09 0x13 0x00]
+	sta v5                                 # offset: 0x1b3b, [V8]................[0x61 0x05]
+	lda v5                                 # offset: 0x1b3d, [V8]................[0x60 0x05]
+	ldobjbyname 0x0, "info"                # offset: 0x1b3f, [IMM8_ID16].........[0x42 0x00 0x14 0x00]
+	sta v4                                 # offset: 0x1b43, [V8]................[0x61 0x04]
+	ldlexvar 0x0, 0x0                      # offset: 0x1b45, [IMM4_IMM4].........[0x3c 0x00]
+	throw.undefinedifholewithname "DOMAIN" # offset: 0x1b47, [PREF_ID16].........[0xfe 0x09 0x0a 0x00]
+	sta v6                                 # offset: 0x1b4b, [V8]................[0x61 0x06]
+	lda.str "testTag"                      # offset: 0x1b4d, [ID16]..............[0x3e 0x1a 0x00]
+	sta v7                                 # offset: 0x1b50, [V8]................[0x61 0x07]
+	lda.str "%{public}s"                   # offset: 0x1b52, [ID16]..............[0x3e 0x00 0x00]
+	sta v8                                 # offset: 0x1b55, [V8]................[0x61 0x08]
+	lda.str "Ability onDestroy"            # offset: 0x1b57, [ID16]..............[0x3e 0x03 0x00]
+	sta v9                                 # offset: 0x1b5a, [V8]................[0x61 0x09]
+	lda v4                                 # offset: 0x1b5c, [V8]................[0x60 0x04]
+	callthisrange 0x2, 0x4, v5             # offset: 0x1b5e, [IMM8_IMM8_V8]......[0x31 0x02 0x04 0x05]
+	ldundefined                            # offset: 0x1b62, [NONE]..............[0x00]
+	returnundefined                        # offset: 0x1b63, [NONE]..............[0x65]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 13: 6
+#	line 18446744073709551615: 51
+#	line 14: 52
+
+#   COLUMN_NUMBER_TABLE:
+#	column 8: 6
+#	column 19: 22
+#	column 27: 30
+#	column 38: 35
+#	column 52: 40
+#	column 8: 45
+#	column 18446744073709551615: 51
+#	column 5: 52
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	     6    53     0(v0)       4funcObj   any
+#	     6    53     1(v1)     4newTarget   any
+#	     6    53     2(v2)           this   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x4 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>#onForeground(any a0, any a1, any a2) <static> { # offset: 0x03b3, code offset: 0x1b64
+#   CODE:
+	mov v0, a0                             # offset: 0x1b68, [V4_V4].............[0x44 0xa0]
+	mov v1, a1                             # offset: 0x1b6a, [V4_V4].............[0x44 0xb1]
+	mov v2, a2                             # offset: 0x1b6c, [V4_V4].............[0x44 0xc2]
+	ldexternalmodulevar 0x2                # offset: 0x1b6e, [IMM8]..............[0x7e 0x02]
+	throw.undefinedifholewithname "hilog"  # offset: 0x1b70, [PREF_ID16].........[0xfe 0x09 0x13 0x00]
+	sta v5                                 # offset: 0x1b74, [V8]................[0x61 0x05]
+	lda v5                                 # offset: 0x1b76, [V8]................[0x60 0x05]
+	ldobjbyname 0x0, "info"                # offset: 0x1b78, [IMM8_ID16].........[0x42 0x00 0x14 0x00]
+	sta v4                                 # offset: 0x1b7c, [V8]................[0x61 0x04]
+	ldlexvar 0x0, 0x0                      # offset: 0x1b7e, [IMM4_IMM4].........[0x3c 0x00]
+	throw.undefinedifholewithname "DOMAIN" # offset: 0x1b80, [PREF_ID16].........[0xfe 0x09 0x0a 0x00]
+	sta v6                                 # offset: 0x1b84, [V8]................[0x61 0x06]
+	lda.str "testTag"                      # offset: 0x1b86, [ID16]..............[0x3e 0x1a 0x00]
+	sta v7                                 # offset: 0x1b89, [V8]................[0x61 0x07]
+	lda.str "%{public}s"                   # offset: 0x1b8b, [ID16]..............[0x3e 0x00 0x00]
+	sta v8                                 # offset: 0x1b8e, [V8]................[0x61 0x08]
+	lda.str "Ability onForeground"         # offset: 0x1b90, [ID16]..............[0x3e 0x04 0x00]
+	sta v9                                 # offset: 0x1b93, [V8]................[0x61 0x09]
+	lda v4                                 # offset: 0x1b95, [V8]................[0x60 0x04]
+	callthisrange 0x2, 0x4, v5             # offset: 0x1b97, [IMM8_IMM8_V8]......[0x31 0x02 0x04 0x05]
+	ldundefined                            # offset: 0x1b9b, [NONE]..............[0x00]
+	returnundefined                        # offset: 0x1b9c, [NONE]..............[0x65]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 32: 6
+#	line 18446744073709551615: 51
+#	line 33: 52
+
+#   COLUMN_NUMBER_TABLE:
+#	column 8: 6
+#	column 19: 22
+#	column 27: 30
+#	column 38: 35
+#	column 52: 40
+#	column 8: 45
+#	column 18446744073709551615: 51
+#	column 5: 52
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	     6    53     0(v0)       4funcObj   any
+#	     6    53     1(v1)     4newTarget   any
+#	     6    53     2(v2)           this   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x9 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>#onWindowStageCreate(any a0, any a1, any a2, any a3) <static> { # offset: 0x03ce, code offset: 0x1b9d
+#   CODE:
+	newlexenvwithname 0x2, { 5 [ i32:2, string:"4newTarget", i32:0, string:"this", i32:1, ]} # offset: 0x1ba1, [IMM8_ID16].........[0xb6 0x02 0x1d 0x00]
+	mov v0, a0                             # offset: 0x1ba5, [V4_V4].............[0x44 0xb0]
+	lda a1                                 # offset: 0x1ba7, [V8]................[0x60 0x0c]
+	stlexvar 0x0, 0x0                      # offset: 0x1ba9, [IMM4_IMM4].........[0x3d 0x00]
+	lda a2                                 # offset: 0x1bab, [V8]................[0x60 0x0d]
+	stlexvar 0x0, 0x1                      # offset: 0x1bad, [IMM4_IMM4].........[0x3d 0x10]
+	mov v3, a3                             # offset: 0x1baf, [V4_V4].............[0x44 0xe3]
+	ldexternalmodulevar 0x2                # offset: 0x1bb1, [IMM8]..............[0x7e 0x02]
+	throw.undefinedifholewithname "hilog"  # offset: 0x1bb3, [PREF_ID16].........[0xfe 0x09 0x13 0x00]
+	sta v6                                 # offset: 0x1bb7, [V8]................[0x61 0x06]
+	lda v6                                 # offset: 0x1bb9, [V8]................[0x60 0x06]
+	ldobjbyname 0x0, "info"                # offset: 0x1bbb, [IMM8_ID16].........[0x42 0x00 0x14 0x00]
+	sta v5                                 # offset: 0x1bbf, [V8]................[0x61 0x05]
+	ldlexvar 0x1, 0x0                      # offset: 0x1bc1, [IMM4_IMM4].........[0x3c 0x01]
+	throw.undefinedifholewithname "DOMAIN" # offset: 0x1bc3, [PREF_ID16].........[0xfe 0x09 0x0a 0x00]
+	sta v7                                 # offset: 0x1bc7, [V8]................[0x61 0x07]
+	lda.str "testTag"                      # offset: 0x1bc9, [ID16]..............[0x3e 0x1a 0x00]
+	sta v8                                 # offset: 0x1bcc, [V8]................[0x61 0x08]
+	lda.str "%{public}s"                   # offset: 0x1bce, [ID16]..............[0x3e 0x00 0x00]
+	sta v9                                 # offset: 0x1bd1, [V8]................[0x61 0x09]
+	lda.str "Ability onWindowStageCreate"  # offset: 0x1bd3, [ID16]..............[0x3e 0x05 0x00]
+	sta v10                                # offset: 0x1bd6, [V8]................[0x61 0x0a]
+	lda v5                                 # offset: 0x1bd8, [V8]................[0x60 0x05]
+	callthisrange 0x2, 0x4, v6             # offset: 0x1bda, [IMM8_IMM8_V8]......[0x31 0x02 0x04 0x06]
+	lda v3                                 # offset: 0x1bde, [V8]................[0x60 0x03]
+	sta v6                                 # offset: 0x1be0, [V8]................[0x61 0x06]
+	lda v6                                 # offset: 0x1be2, [V8]................[0x60 0x06]
+	ldobjbyname 0x4, "loadContent"         # offset: 0x1be4, [IMM8_ID16].........[0x42 0x04 0x15 0x00]
+	sta v5                                 # offset: 0x1be8, [V8]................[0x61 0x05]
+	lda.str "pages/Index"                  # offset: 0x1bea, [ID16]..............[0x3e 0x16 0x00]
+	sta v7                                 # offset: 0x1bed, [V8]................[0x61 0x07]
+	definefunc 0x6, &entry.src.main.ets.entryability.EntryAbility&.#~@0>@1*#:(any,any,any,any), 0x1 # offset: 0x1bef, [IMM8_ID16_IMM8]....[0x33 0x06 0x1c 0x00 0x01]
+	sta v8                                 # offset: 0x1bf4, [V8]................[0x61 0x08]
+	lda v5                                 # offset: 0x1bf6, [V8]................[0x60 0x05]
+	callthis2 0x7, v6, v7, v8              # offset: 0x1bf8, [IMM8_V8_V8_V8].....[0x2f 0x07 0x06 0x07 0x08]
+	ldundefined                            # offset: 0x1bfd, [NONE]..............[0x00]
+	returnundefined                        # offset: 0x1bfe, [NONE]..............[0x65]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 17: 16
+#	line 18: 61
+#	line 18446744073709551615: 92
+#	line 25: 93
+
+#   COLUMN_NUMBER_TABLE:
+#	column 8: 16
+#	column 19: 32
+#	column 27: 40
+#	column 38: 45
+#	column 52: 50
+#	column 8: 55
+#	column 32: 73
+#	column 47: 78
+#	column 8: 85
+#	column 18446744073709551615: 92
+#	column 5: 93
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	    16    94     0(v0)       4funcObj   any
+#	    16    94     3(v3)    windowStage   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x4 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>#onWindowStageDestroy(any a0, any a1, any a2) <static> { # offset: 0x03e9, code offset: 0x1bff
+#   CODE:
+	mov v0, a0                             # offset: 0x1c03, [V4_V4].............[0x44 0xa0]
+	mov v1, a1                             # offset: 0x1c05, [V4_V4].............[0x44 0xb1]
+	mov v2, a2                             # offset: 0x1c07, [V4_V4].............[0x44 0xc2]
+	ldexternalmodulevar 0x2                # offset: 0x1c09, [IMM8]..............[0x7e 0x02]
+	throw.undefinedifholewithname "hilog"  # offset: 0x1c0b, [PREF_ID16].........[0xfe 0x09 0x13 0x00]
+	sta v5                                 # offset: 0x1c0f, [V8]................[0x61 0x05]
+	lda v5                                 # offset: 0x1c11, [V8]................[0x60 0x05]
+	ldobjbyname 0x0, "info"                # offset: 0x1c13, [IMM8_ID16].........[0x42 0x00 0x14 0x00]
+	sta v4                                 # offset: 0x1c17, [V8]................[0x61 0x04]
+	ldlexvar 0x0, 0x0                      # offset: 0x1c19, [IMM4_IMM4].........[0x3c 0x00]
+	throw.undefinedifholewithname "DOMAIN" # offset: 0x1c1b, [PREF_ID16].........[0xfe 0x09 0x0a 0x00]
+	sta v6                                 # offset: 0x1c1f, [V8]................[0x61 0x06]
+	lda.str "testTag"                      # offset: 0x1c21, [ID16]..............[0x3e 0x1a 0x00]
+	sta v7                                 # offset: 0x1c24, [V8]................[0x61 0x07]
+	lda.str "%{public}s"                   # offset: 0x1c26, [ID16]..............[0x3e 0x00 0x00]
+	sta v8                                 # offset: 0x1c29, [V8]................[0x61 0x08]
+	lda.str "Ability onWindowStageDestroy" # offset: 0x1c2b, [ID16]..............[0x3e 0x06 0x00]
+	sta v9                                 # offset: 0x1c2e, [V8]................[0x61 0x09]
+	lda v4                                 # offset: 0x1c30, [V8]................[0x60 0x04]
+	callthisrange 0x2, 0x4, v5             # offset: 0x1c32, [IMM8_IMM8_V8]......[0x31 0x02 0x04 0x05]
+	ldundefined                            # offset: 0x1c36, [NONE]..............[0x00]
+	returnundefined                        # offset: 0x1c37, [NONE]..............[0x65]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 28: 6
+#	line 18446744073709551615: 51
+#	line 29: 52
+
+#   COLUMN_NUMBER_TABLE:
+#	column 8: 6
+#	column 19: 22
+#	column 27: 30
+#	column 38: 35
+#	column 52: 40
+#	column 8: 45
+#	column 18446744073709551615: 51
+#	column 5: 52
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	     6    53     0(v0)       4funcObj   any
+#	     6    53     1(v1)     4newTarget   any
+#	     6    53     2(v2)           this   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x10 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.#~@0>@1*#(any a0, any a1, any a2, any a3) <static> { # offset: 0x030e, code offset: 0x1c38
+#   CODE:
+	mov v0, a0                                              # offset: 0x1c3d, [V4_V4].............[0x44 0xd0]
+	mov v1, a1                                              # offset: 0x1c3f, [V4_V4].............[0x44 0xe1]
+	mov v2, a2                                              # offset: 0x1c41, [V4_V4].............[0x44 0xf2]
+	mov v3, a3                                              # offset: 0x1c43, [V8_V8].............[0x45 0x03 0x10]
+	lda v3                                                  # offset: 0x1c46, [V8]................[0x60 0x03]
+	sta v5                                                  # offset: 0x1c48, [V8]................[0x61 0x05]
+	lda v5                                                  # offset: 0x1c4a, [V8]................[0x60 0x05]
+	ldobjbyname 0x0, "code"                                 # offset: 0x1c4c, [IMM8_ID16].........[0x42 0x00 0x0f 0x00]
+	callruntime.isfalse 0x2                                 # offset: 0x1c50, [PREF_IMM8].........[0xfb 0x14 0x02]
+	jnez jump_label_0                                       # offset: 0x1c53, [IMM8]..............[0x51 0x47]
+	ldexternalmodulevar 0x2                                 # offset: 0x1c55, [IMM8]..............[0x7e 0x02]
+	throw.undefinedifholewithname "hilog"                   # offset: 0x1c57, [PREF_ID16].........[0xfe 0x09 0x13 0x00]
+	sta v6                                                  # offset: 0x1c5b, [V8]................[0x61 0x06]
+	lda v6                                                  # offset: 0x1c5d, [V8]................[0x60 0x06]
+	ldobjbyname 0x3, "error"                                # offset: 0x1c5f, [IMM8_ID16].........[0x42 0x03 0x11 0x00]
+	sta v5                                                  # offset: 0x1c63, [V8]................[0x61 0x05]
+	ldlexvar 0x1, 0x0                                       # offset: 0x1c65, [IMM4_IMM4].........[0x3c 0x01]
+	throw.undefinedifholewithname "DOMAIN"                  # offset: 0x1c67, [PREF_ID16].........[0xfe 0x09 0x0a 0x00]
+	sta v7                                                  # offset: 0x1c6b, [V8]................[0x61 0x07]
+	lda.str "testTag"                                       # offset: 0x1c6d, [ID16]..............[0x3e 0x1a 0x00]
+	sta v8                                                  # offset: 0x1c70, [V8]................[0x61 0x08]
+	lda.str "Failed to load the content. Cause: %{public}s" # offset: 0x1c72, [ID16]..............[0x3e 0x0b 0x00]
+	sta v9                                                  # offset: 0x1c75, [V8]................[0x61 0x09]
+	tryldglobalbyname 0x5, "JSON"                           # offset: 0x1c77, [IMM8_ID16].........[0x3f 0x05 0x0c 0x00]
+	sta v11                                                 # offset: 0x1c7b, [V8]................[0x61 0x0b]
+	lda v11                                                 # offset: 0x1c7d, [V8]................[0x60 0x0b]
+	ldobjbyname 0x6, "stringify"                            # offset: 0x1c7f, [IMM8_ID16].........[0x42 0x06 0x19 0x00]
+	sta v10                                                 # offset: 0x1c83, [V8]................[0x61 0x0a]
+	lda v3                                                  # offset: 0x1c85, [V8]................[0x60 0x03]
+	sta v12                                                 # offset: 0x1c87, [V8]................[0x61 0x0c]
+	lda v10                                                 # offset: 0x1c89, [V8]................[0x60 0x0a]
+	callthis1 0x8, v11, v12                                 # offset: 0x1c8b, [IMM8_V8_V8]........[0x2e 0x08 0x0b 0x0c]
+	sta v10                                                 # offset: 0x1c8f, [V8]................[0x61 0x0a]
+	lda v5                                                  # offset: 0x1c91, [V8]................[0x60 0x05]
+	callthisrange 0xa, 0x4, v6                              # offset: 0x1c93, [IMM8_IMM8_V8]......[0x31 0x0a 0x04 0x06]
+	ldundefined                                             # offset: 0x1c97, [NONE]..............[0x00]
+	ldundefined                                             # offset: 0x1c98, [NONE]..............[0x00]
+	returnundefined                                         # offset: 0x1c99, [NONE]..............[0x65]
+jump_label_0:
+	ldexternalmodulevar 0x2                                 # offset: 0x1c9a, [IMM8]..............[0x7e 0x02]
+	throw.undefinedifholewithname "hilog"                   # offset: 0x1c9c, [PREF_ID16].........[0xfe 0x09 0x13 0x00]
+	sta v6                                                  # offset: 0x1ca0, [V8]................[0x61 0x06]
+	lda v6                                                  # offset: 0x1ca2, [V8]................[0x60 0x06]
+	ldobjbyname 0xc, "info"                                 # offset: 0x1ca4, [IMM8_ID16].........[0x42 0x0c 0x14 0x00]
+	sta v5                                                  # offset: 0x1ca8, [V8]................[0x61 0x05]
+	ldlexvar 0x1, 0x0                                       # offset: 0x1caa, [IMM4_IMM4].........[0x3c 0x01]
+	throw.undefinedifholewithname "DOMAIN"                  # offset: 0x1cac, [PREF_ID16].........[0xfe 0x09 0x0a 0x00]
+	sta v7                                                  # offset: 0x1cb0, [V8]................[0x61 0x07]
+	lda.str "testTag"                                       # offset: 0x1cb2, [ID16]..............[0x3e 0x1a 0x00]
+	sta v8                                                  # offset: 0x1cb5, [V8]................[0x61 0x08]
+	lda.str "Succeeded in loading the content."             # offset: 0x1cb7, [ID16]..............[0x3e 0x0d 0x00]
+	sta v9                                                  # offset: 0x1cba, [V8]................[0x61 0x09]
+	lda v5                                                  # offset: 0x1cbc, [V8]................[0x60 0x05]
+	callthis3 0xe, v6, v7, v8, v9                           # offset: 0x1cbe, [IMM8_V8_V8_V8_V8]..[0x30 0x0e 0x06 0x07 0x08 0x09]
+	ldundefined                                             # offset: 0x1cc4, [NONE]..............[0x00]
+	returnundefined                                         # offset: 0x1cc5, [NONE]..............[0x65]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 19: 9
+#	line 20: 24
+#	line 21: 90
+#	line 18446744073709551615: 91
+#	line 24: 92
+#	line 23: 93
+#	line 18446744073709551615: 135
+#	line 24: 136
+
+#   COLUMN_NUMBER_TABLE:
+#	column 16: 9
+#	column 28: 40
+#	column 36: 48
+#	column 47: 53
+#	column 96: 58
+#	column 111: 72
+#	column 96: 76
+#	column 16: 84
+#	column 18446744073709551615: 91
+#	column 9: 92
+#	column 12: 93
+#	column 23: 109
+#	column 31: 117
+#	column 42: 122
+#	column 12: 127
+#	column 18446744073709551615: 135
+#	column 9: 136
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	     9   137     1(v1)     0newTarget   any
+#	     9   137     2(v2)          0this   any
+#	     9   137     0(v0)       4funcObj   any
+#	     9   137     3(v3)            err   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x3 }
+.function any &entry.src.main.ets.entryability.EntryAbility&.func_main_0(any a0, any a1, any a2) <static> { # offset: 0x032a, code offset: 0x1cc6
+#   CODE:
+	newlexenvwithname 0x1, { 3 [ i32:1, string:"DOMAIN", i32:0, ]} # offset: 0x1cca, [IMM8_ID16].........[0xb6 0x01 0x1f 0x00]
+	mov v0, a0                                                     # offset: 0x1cce, [V4_V4].............[0x44 0x80]
+	mov v1, a1                                                     # offset: 0x1cd0, [V4_V4].............[0x44 0x91]
+	mov v2, a2                                                     # offset: 0x1cd2, [V4_V4].............[0x44 0xa2]
+	ldai 0x0                                                       # offset: 0x1cd4, [IMM32].............[0x62 0x00 0x00 0x00 0x00]
+	sta v4                                                         # offset: 0x1cd9, [V8]................[0x61 0x04]
+	lda v4                                                         # offset: 0x1cdb, [V8]................[0x60 0x04]
+	stlexvar 0x0, 0x0                                              # offset: 0x1cdd, [IMM4_IMM4].........[0x3d 0x00]
+	ldexternalmodulevar 0x1                                        # offset: 0x1cdf, [IMM8]..............[0x7e 0x01]
+	throw.undefinedifholewithname "UIAbility"                      # offset: 0x1ce1, [PREF_ID16].........[0xfe 0x09 0x0e 0x00]
+	sta v6                                                         # offset: 0x1ce5, [V8]................[0x61 0x06]
+	defineclasswithbuffer 0x0, &entry.src.main.ets.entryability.EntryAbility&.#~@0=#EntryAbility:(any,any,any,any), { 19 [ string:"onCreate", method:#~@0>#onCreate, method_affiliate:2, string:"onDestroy", method:#~@0>#onDestroy, method_affiliate:0, string:"onWindowStageCreate", method:#~@0>#onWindowStageCreate, method_affiliate:1, string:"onWindowStageDestroy", method:#~@0>#onWindowStageDestroy, method_affiliate:0, string:"onForeground", method:#~@0>#onForeground, method_affiliate:0, string:"onBackground", method:#~@0>#onBackground, method_affiliate:0, i32:6, ]}, 0x0, v6 # offset: 0x1ce7, [IMM8_ID16_ID16_IMM16_V8][0x35 0x00 0x1b 0x00 0x1e 0x00 0x00 0x00 0x06]
+	sta v4                                                         # offset: 0x1cf0, [V8]................[0x61 0x04]
+	sta v5                                                         # offset: 0x1cf2, [V8]................[0x61 0x05]
+	lda v4                                                         # offset: 0x1cf4, [V8]................[0x60 0x04]
+	ldobjbyname 0x1, "prototype"                                   # offset: 0x1cf6, [IMM8_ID16].........[0x42 0x01 0x17 0x00]
+	sta v7                                                         # offset: 0x1cfa, [V8]................[0x61 0x07]
+	lda v4                                                         # offset: 0x1cfc, [V8]................[0x60 0x04]
+	stmodulevar 0x0                                                # offset: 0x1cfe, [IMM8]..............[0x7c 0x00]
+	ldundefined                                                    # offset: 0x1d00, [NONE]..............[0x00]
+	returnundefined                                                # offset: 0x1d01, [NONE]..............[0x65]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 6: 10
+#	line 7: 21
+#	line 18446744073709551615: 54
+
+#   COLUMN_NUMBER_TABLE:
+#	column 15: 10
+#	column 6: 15
+#	column 42: 21
+#	column 52: 27
+#	column 21: 40
+#	column 52: 42
+#	column 21: 52
+#	column 18446744073709551615: 54
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	    10    56     0(v0)       4funcObj   any
+#	    10    56     1(v1)     4newTarget   any
+#	    10    56     2(v2)           this   any
+#	    21    52     5(v5)   EntryAbility   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x0 }
+.function any &entry.src.main.ets.entrybackupability.EntryBackupAbility&.#~@0=#EntryBackupAbility(any a0, any a1, any a2, any a3) <static> { # offset: 0x0579, code offset: 0x1d02
+#   CODE:
+	mov v0, a0                             # offset: 0x1d06, [V4_V4].............[0x44 0x60]
+	mov v1, a1                             # offset: 0x1d08, [V4_V4].............[0x44 0x71]
+	mov v2, a2                             # offset: 0x1d0a, [V4_V4].............[0x44 0x82]
+	mov v3, a3                             # offset: 0x1d0c, [V4_V4].............[0x44 0x93]
+	lda v0                                 # offset: 0x1d0e, [V8]................[0x60 0x00]
+	sta v5                                 # offset: 0x1d10, [V8]................[0x61 0x05]
+	callruntime.supercallforwardallargs v5 # offset: 0x1d12, [PREF_V8]...........[0xfb 0x19 0x05]
+	sta v5                                 # offset: 0x1d15, [V8]................[0x61 0x05]
+	lda v2                                 # offset: 0x1d17, [V8]................[0x60 0x02]
+	throw.ifsupernotcorrectcall 0x1        # offset: 0x1d19, [PREF_IMM8].........[0xfe 0x07 0x01]
+	lda v5                                 # offset: 0x1d1c, [V8]................[0x60 0x05]
+	sta v2                                 # offset: 0x1d1e, [V8]................[0x61 0x02]
+	lda v2                                 # offset: 0x1d20, [V8]................[0x60 0x02]
+	throw.ifsupernotcorrectcall 0x0        # offset: 0x1d22, [PREF_IMM8].........[0xfe 0x07 0x00]
+	return                                 # offset: 0x1d25, [NONE]..............[0x64]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 0: 8
+#	line 18446744073709551615: 26
+#	line 0: 31
+
+#   COLUMN_NUMBER_TABLE:
+#	column 0: 8
+#	column 18446744073709551615: 26
+#	column 0: 31
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	     8    32     0(v0)       4funcObj   any
+#	     8    32     1(v1)     4newTarget   any
+#	     8    32     3(v3)           args   any
+#	     8    32     2(v2)           this   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0xa }
+.function any &entry.src.main.ets.entrybackupability.EntryBackupAbility&.#~@0>#onBackup(any a0, any a1, any a2) <static> { # offset: 0x0541, code offset: 0x1d26
+#   CODE:
+	mov v0, a0                                 # offset: 0x1d2a, [V4_V4].............[0x44 0x90]
+	mov v1, a1                                 # offset: 0x1d2c, [V4_V4].............[0x44 0xa1]
+	mov v2, a2                                 # offset: 0x1d2e, [V4_V4].............[0x44 0xb2]
+	asyncfunctionenter                         # offset: 0x1d30, [NONE]..............[0xae]
+	sta v3                                     # offset: 0x1d31, [V8]................[0x61 0x03]
+try_begin_label_0:
+	ldexternalmodulevar 0x1                    # offset: 0x1d33, [IMM8]..............[0x7e 0x01]
+	throw.undefinedifholewithname "hilog"      # offset: 0x1d35, [PREF_ID16].........[0xfe 0x09 0x13 0x00]
+	sta v5                                     # offset: 0x1d39, [V8]................[0x61 0x05]
+	lda v5                                     # offset: 0x1d3b, [V8]................[0x60 0x05]
+	ldobjbyname 0x0, "info"                    # offset: 0x1d3d, [IMM8_ID16].........[0x42 0x00 0x14 0x00]
+	sta v4                                     # offset: 0x1d41, [V8]................[0x61 0x04]
+	ldlexvar 0x0, 0x0                          # offset: 0x1d43, [IMM4_IMM4].........[0x3c 0x00]
+	throw.undefinedifholewithname "DOMAIN"     # offset: 0x1d45, [PREF_ID16].........[0xfe 0x09 0x0a 0x00]
+	sta v6                                     # offset: 0x1d49, [V8]................[0x61 0x06]
+	lda.str "testTag"                          # offset: 0x1d4b, [ID16]..............[0x3e 0x1a 0x00]
+	sta v7                                     # offset: 0x1d4e, [V8]................[0x61 0x07]
+	lda.str "onBackup ok"                      # offset: 0x1d50, [ID16]..............[0x3e 0x22 0x00]
+	sta v8                                     # offset: 0x1d53, [V8]................[0x61 0x08]
+	lda v4                                     # offset: 0x1d55, [V8]................[0x60 0x04]
+	callthis3 0x2, v5, v6, v7, v8              # offset: 0x1d57, [IMM8_V8_V8_V8_V8]..[0x30 0x02 0x05 0x06 0x07 0x08]
+	tryldglobalbyname 0x4, "Promise"           # offset: 0x1d5d, [IMM8_ID16].........[0x3f 0x04 0x21 0x00]
+	sta v5                                     # offset: 0x1d61, [V8]................[0x61 0x05]
+	lda v5                                     # offset: 0x1d63, [V8]................[0x60 0x05]
+	ldobjbyname 0x5, "resolve"                 # offset: 0x1d65, [IMM8_ID16].........[0x42 0x05 0x24 0x00]
+	sta v4                                     # offset: 0x1d69, [V8]................[0x61 0x04]
+	lda v4                                     # offset: 0x1d6b, [V8]................[0x60 0x04]
+	callthis0 0x7, v5                          # offset: 0x1d6d, [IMM8_V8]...........[0x2d 0x07 0x05]
+	asyncfunctionawaituncaught v3              # offset: 0x1d70, [V8]................[0xc4 0x03]
+	suspendgenerator v3                        # offset: 0x1d72, [V8]................[0xc3 0x03]
+	lda v3                                     # offset: 0x1d74, [V8]................[0x60 0x03]
+	resumegenerator                            # offset: 0x1d76, [NONE]..............[0xbf]
+	sta v5                                     # offset: 0x1d77, [V8]................[0x61 0x05]
+	lda v3                                     # offset: 0x1d79, [V8]................[0x60 0x03]
+	getresumemode                              # offset: 0x1d7b, [NONE]..............[0xc0]
+	sta v4                                     # offset: 0x1d7c, [V8]................[0x61 0x04]
+	ldai 0x1                                   # offset: 0x1d7e, [IMM32].............[0x62 0x01 0x00 0x00 0x00]
+	eq 0x9, v4                                 # offset: 0x1d83, [IMM8_V8]...........[0x0f 0x09 0x04]
+	jeqz jump_label_3                          # offset: 0x1d86, [IMM8]..............[0x4f 0x06]
+	lda v5                                     # offset: 0x1d88, [V8]................[0x60 0x05]
+	throw                                      # offset: 0x1d8a, [PREF_NONE].........[0xfe 0x00]
+jump_label_3:
+	lda v5                                     # offset: 0x1d8c, [V8]................[0x60 0x05]
+	ldundefined                                # offset: 0x1d8e, [NONE]..............[0x00]
+	asyncfunctionresolve v3                    # offset: 0x1d8f, [V8]................[0xcd 0x03]
+	return                                     # offset: 0x1d91, [NONE]..............[0x64]
+try_end_label_0:
+	sta v4                                     # offset: 0x1d92, [V8]................[0x61 0x04]
+	asyncfunctionreject v3                     # offset: 0x1d94, [V8]................[0xce 0x03]
+	return                                     # offset: 0x1d96, [NONE]..............[0x64]
+handler_end_label_0_0:
+
+.catchall try_begin_label_0, try_end_label_0, try_end_label_0, handler_end_label_0_0
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 6: 9
+#	line 7: 51
+#	line 18446744073709551615: 100
+#	line 8: 103
+#	line 5: 104
+#	line 8: 108
+
+#   COLUMN_NUMBER_TABLE:
+#	column 8: 9
+#	column 19: 25
+#	column 27: 33
+#	column 38: 38
+#	column 8: 43
+#	column 14: 51
+#	column 8: 70
+#	column 18446744073709551615: 100
+#	column 5: 103
+#	column 18: 104
+#	column 5: 108
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	     6   109     0(v0)       4funcObj   any
+#	     6   109     1(v1)     4newTarget   any
+#	     6   109     2(v2)           this   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0xf }
+.function any &entry.src.main.ets.entrybackupability.EntryBackupAbility&.#~@0>#onRestore(any a0, any a1, any a2, any a3) <static> { # offset: 0x055d, code offset: 0x1d9d
+#   CODE:
+	mov v0, a0                                 # offset: 0x1da2, [V4_V4].............[0x44 0xd0]
+	mov v1, a1                                 # offset: 0x1da4, [V4_V4].............[0x44 0xe1]
+	mov v2, a2                                 # offset: 0x1da6, [V4_V4].............[0x44 0xf2]
+	mov v3, a3                                 # offset: 0x1da8, [V8_V8].............[0x45 0x03 0x10]
+	asyncfunctionenter                         # offset: 0x1dab, [NONE]..............[0xae]
+	sta v4                                     # offset: 0x1dac, [V8]................[0x61 0x04]
+try_begin_label_0:
+	ldexternalmodulevar 0x1                    # offset: 0x1dae, [IMM8]..............[0x7e 0x01]
+	throw.undefinedifholewithname "hilog"      # offset: 0x1db0, [PREF_ID16].........[0xfe 0x09 0x13 0x00]
+	sta v6                                     # offset: 0x1db4, [V8]................[0x61 0x06]
+	lda v6                                     # offset: 0x1db6, [V8]................[0x60 0x06]
+	ldobjbyname 0x0, "info"                    # offset: 0x1db8, [IMM8_ID16].........[0x42 0x00 0x14 0x00]
+	sta v5                                     # offset: 0x1dbc, [V8]................[0x61 0x05]
+	ldlexvar 0x0, 0x0                          # offset: 0x1dbe, [IMM4_IMM4].........[0x3c 0x00]
+	throw.undefinedifholewithname "DOMAIN"     # offset: 0x1dc0, [PREF_ID16].........[0xfe 0x09 0x0a 0x00]
+	sta v7                                     # offset: 0x1dc4, [V8]................[0x61 0x07]
+	lda.str "testTag"                          # offset: 0x1dc6, [ID16]..............[0x3e 0x1a 0x00]
+	sta v8                                     # offset: 0x1dc9, [V8]................[0x61 0x08]
+	lda.str "onRestore ok %{public}s"          # offset: 0x1dcb, [ID16]..............[0x3e 0x23 0x00]
+	sta v9                                     # offset: 0x1dce, [V8]................[0x61 0x09]
+	tryldglobalbyname 0x2, "JSON"              # offset: 0x1dd0, [IMM8_ID16].........[0x3f 0x02 0x0c 0x00]
+	sta v11                                    # offset: 0x1dd4, [V8]................[0x61 0x0b]
+	lda v11                                    # offset: 0x1dd6, [V8]................[0x60 0x0b]
+	ldobjbyname 0x3, "stringify"               # offset: 0x1dd8, [IMM8_ID16].........[0x42 0x03 0x19 0x00]
+	sta v10                                    # offset: 0x1ddc, [V8]................[0x61 0x0a]
+	lda v3                                     # offset: 0x1dde, [V8]................[0x60 0x03]
+	sta v12                                    # offset: 0x1de0, [V8]................[0x61 0x0c]
+	lda v10                                    # offset: 0x1de2, [V8]................[0x60 0x0a]
+	callthis1 0x5, v11, v12                    # offset: 0x1de4, [IMM8_V8_V8]........[0x2e 0x05 0x0b 0x0c]
+	sta v10                                    # offset: 0x1de8, [V8]................[0x61 0x0a]
+	lda v5                                     # offset: 0x1dea, [V8]................[0x60 0x05]
+	callthisrange 0x7, 0x4, v6                 # offset: 0x1dec, [IMM8_IMM8_V8]......[0x31 0x07 0x04 0x06]
+	tryldglobalbyname 0x9, "Promise"           # offset: 0x1df0, [IMM8_ID16].........[0x3f 0x09 0x21 0x00]
+	sta v6                                     # offset: 0x1df4, [V8]................[0x61 0x06]
+	lda v6                                     # offset: 0x1df6, [V8]................[0x60 0x06]
+	ldobjbyname 0xa, "resolve"                 # offset: 0x1df8, [IMM8_ID16].........[0x42 0x0a 0x24 0x00]
+	sta v5                                     # offset: 0x1dfc, [V8]................[0x61 0x05]
+	lda v5                                     # offset: 0x1dfe, [V8]................[0x60 0x05]
+	callthis0 0xc, v6                          # offset: 0x1e00, [IMM8_V8]...........[0x2d 0x0c 0x06]
+	asyncfunctionawaituncaught v4              # offset: 0x1e03, [V8]................[0xc4 0x04]
+	suspendgenerator v4                        # offset: 0x1e05, [V8]................[0xc3 0x04]
+	lda v4                                     # offset: 0x1e07, [V8]................[0x60 0x04]
+	resumegenerator                            # offset: 0x1e09, [NONE]..............[0xbf]
+	sta v6                                     # offset: 0x1e0a, [V8]................[0x61 0x06]
+	lda v4                                     # offset: 0x1e0c, [V8]................[0x60 0x04]
+	getresumemode                              # offset: 0x1e0e, [NONE]..............[0xc0]
+	sta v5                                     # offset: 0x1e0f, [V8]................[0x61 0x05]
+	ldai 0x1                                   # offset: 0x1e11, [IMM32].............[0x62 0x01 0x00 0x00 0x00]
+	eq 0xe, v5                                 # offset: 0x1e16, [IMM8_V8]...........[0x0f 0x0e 0x05]
+	jeqz jump_label_3                          # offset: 0x1e19, [IMM8]..............[0x4f 0x06]
+	lda v6                                     # offset: 0x1e1b, [V8]................[0x60 0x06]
+	throw                                      # offset: 0x1e1d, [PREF_NONE].........[0xfe 0x00]
+jump_label_3:
+	lda v6                                     # offset: 0x1e1f, [V8]................[0x60 0x06]
+	ldundefined                                # offset: 0x1e21, [NONE]..............[0x00]
+	asyncfunctionresolve v4                    # offset: 0x1e22, [V8]................[0xcd 0x04]
+	return                                     # offset: 0x1e24, [NONE]..............[0x64]
+try_end_label_0:
+	sta v5                                     # offset: 0x1e25, [V8]................[0x61 0x05]
+	asyncfunctionreject v4                     # offset: 0x1e27, [V8]................[0xce 0x04]
+	return                                     # offset: 0x1e29, [NONE]..............[0x64]
+handler_end_label_0_0:
+
+.catchall try_begin_label_0, try_end_label_0, try_end_label_0, handler_end_label_0_0
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 10: 12
+#	line 11: 78
+#	line 18446744073709551615: 127
+#	line 12: 130
+#	line 9: 131
+#	line 12: 135
+
+#   COLUMN_NUMBER_TABLE:
+#	column 8: 12
+#	column 19: 28
+#	column 27: 36
+#	column 38: 41
+#	column 65: 46
+#	column 80: 60
+#	column 65: 64
+#	column 8: 72
+#	column 14: 78
+#	column 8: 97
+#	column 18446744073709551615: 127
+#	column 5: 130
+#	column 19: 131
+#	column 5: 135
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	     9   136     0(v0)       4funcObj   any
+#	     9   136     1(v1)     4newTarget   any
+#	     9   136     3(v3)  bundleVersion   any
+#	     9   136     2(v2)           this   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x3 }
+.function any &entry.src.main.ets.entrybackupability.EntryBackupAbility&.func_main_0(any a0, any a1, any a2) <static> { # offset: 0x0525, code offset: 0x1e31
+#   CODE:
+	newlexenvwithname 0x1, { 3 [ i32:1, string:"DOMAIN", i32:0, ]} # offset: 0x1e35, [IMM8_ID16].........[0xb6 0x01 0x27 0x00]
+	mov v0, a0                                                     # offset: 0x1e39, [V4_V4].............[0x44 0x80]
+	mov v1, a1                                                     # offset: 0x1e3b, [V4_V4].............[0x44 0x91]
+	mov v2, a2                                                     # offset: 0x1e3d, [V4_V4].............[0x44 0xa2]
+	ldai 0x0                                                       # offset: 0x1e3f, [IMM32].............[0x62 0x00 0x00 0x00 0x00]
+	sta v4                                                         # offset: 0x1e44, [V8]................[0x61 0x04]
+	lda v4                                                         # offset: 0x1e46, [V8]................[0x60 0x04]
+	stlexvar 0x0, 0x0                                              # offset: 0x1e48, [IMM4_IMM4].........[0x3d 0x00]
+	ldexternalmodulevar 0x0                                        # offset: 0x1e4a, [IMM8]..............[0x7e 0x00]
+	throw.undefinedifholewithname "BackupExtensionAbility"         # offset: 0x1e4c, [PREF_ID16].........[0xfe 0x09 0x20 0x00]
+	sta v6                                                         # offset: 0x1e50, [V8]................[0x61 0x06]
+	defineclasswithbuffer 0x0, &entry.src.main.ets.entrybackupability.EntryBackupAbility&.#~@0=#EntryBackupAbility:(any,any,any,any), { 7 [ string:"onBackup", method:#~@0>#onBackup, method_affiliate:0, string:"onRestore", method:#~@0>#onRestore, method_affiliate:1, i32:2, ]}, 0x0, v6 # offset: 0x1e52, [IMM8_ID16_ID16_IMM16_V8][0x35 0x00 0x25 0x00 0x26 0x00 0x00 0x00 0x06]
+	sta v4                                                         # offset: 0x1e5b, [V8]................[0x61 0x04]
+	sta v5                                                         # offset: 0x1e5d, [V8]................[0x61 0x05]
+	lda v4                                                         # offset: 0x1e5f, [V8]................[0x60 0x04]
+	ldobjbyname 0x1, "prototype"                                   # offset: 0x1e61, [IMM8_ID16].........[0x42 0x01 0x17 0x00]
+	sta v7                                                         # offset: 0x1e65, [V8]................[0x61 0x07]
+	lda v4                                                         # offset: 0x1e67, [V8]................[0x60 0x04]
+	stmodulevar 0x0                                                # offset: 0x1e69, [IMM8]..............[0x7c 0x00]
+	ldundefined                                                    # offset: 0x1e6b, [NONE]..............[0x00]
+	returnundefined                                                # offset: 0x1e6c, [NONE]..............[0x65]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 3: 10
+#	line 4: 21
+#	line 18446744073709551615: 54
+
+#   COLUMN_NUMBER_TABLE:
+#	column 15: 10
+#	column 6: 15
+#	column 48: 21
+#	column 71: 27
+#	column 21: 40
+#	column 71: 42
+#	column 21: 52
+#	column 18446744073709551615: 54
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	    10    56     0(v0)       4funcObj   any
+#	    10    56     1(v1)     4newTarget   any
+#	    10    56     2(v2)           this   any
+#	    21    52     5(v5) EntryBackupAbility   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x0 }
+.function any &entry.src.main.ets.pages.Index&.#*#(any a0, any a1, any a2) <static> { # offset: 0x0611, code offset: 0x1e6d
+#   CODE:
+	mov v0, a0      # offset: 0x1e71, [V4_V4].............[0x44 0x40]
+	mov v1, a1      # offset: 0x1e73, [V4_V4].............[0x44 0x51]
+	mov v2, a2      # offset: 0x1e75, [V4_V4].............[0x44 0x62]
+	ldundefined     # offset: 0x1e77, [NONE]..............[0x00]
+	returnundefined # offset: 0x1e78, [NONE]..............[0x65]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 1: 7
+
+#   COLUMN_NUMBER_TABLE:
+#	column 67: 7
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	     6     8     1(v1)     0newTarget   any
+#	     6     8     2(v2)          0this   any
+#	     6     8     0(v0)       4funcObj   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x2 }
+.function any &entry.src.main.ets.pages.Index&.#*#^1(any a0, any a1, any a2) <static> { # offset: 0x062d, code offset: 0x1e79
+#   CODE:
+	mov v0, a0                            # offset: 0x1e7d, [V4_V4].............[0x44 0x70]
+	mov v1, a1                            # offset: 0x1e7f, [V4_V4].............[0x44 0x81]
+	mov v2, a2                            # offset: 0x1e81, [V4_V4].............[0x44 0x92]
+	ldlexvar 0x0, 0x0                     # offset: 0x1e83, [IMM4_IMM4].........[0x3c 0x00]
+	throw.undefinedifholewithname "Index" # offset: 0x1e85, [PREF_ID16].........[0xfe 0x09 0x31 0x00]
+	sta v4                                # offset: 0x1e89, [V8]................[0x61 0x04]
+	ldundefined                           # offset: 0x1e8b, [NONE]..............[0x00]
+	sta v5                                # offset: 0x1e8c, [V8]................[0x61 0x05]
+	createemptyobject                     # offset: 0x1e8e, [NONE]..............[0x04]
+	sta v6                                # offset: 0x1e8f, [V8]................[0x61 0x06]
+	newobjrange 0x0, 0x3, v4              # offset: 0x1e91, [IMM8_IMM8_V8]......[0x08 0x00 0x03 0x04]
+	return                                # offset: 0x1e95, [NONE]..............[0x64]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 67: 6
+
+#   COLUMN_NUMBER_TABLE:
+#	column 29: 6
+#	column 25: 12
+#	column 35: 14
+#	column 25: 15
+#	column 46: 17
+#	column 25: 18
+#	column 49: 24
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	     6    25     1(v1)     0newTarget   any
+#	     6    25     2(v2)          0this   any
+#	     6    25     0(v0)       4funcObj   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x0 }
+.function any &entry.src.main.ets.pages.Index&.#~@0<#getEntryName(any a0, any a1, any a2) <static> { # offset: 0x072a, code offset: 0x1e96
+#   CODE:
+	mov v0, a0      # offset: 0x1e9a, [V4_V4].............[0x44 0x40]
+	mov v1, a1      # offset: 0x1e9c, [V4_V4].............[0x44 0x51]
+	mov v2, a2      # offset: 0x1e9e, [V4_V4].............[0x44 0x62]
+	lda.str "Index" # offset: 0x1ea0, [ID16]..............[0x3e 0x31 0x00]
+	return          # offset: 0x1ea3, [NONE]..............[0x64]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 64: 6
+#	line 65: 9
+
+#   COLUMN_NUMBER_TABLE:
+#	column 15: 6
+#	column 5: 9
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	     6    10     0(v0)       4funcObj   any
+#	     6    10     1(v1)     4newTarget   any
+#	     6    10     2(v2)           this   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x17 }
+.function any &entry.src.main.ets.pages.Index&.#~@0=#Index(any a0, any a1, any a2, any a3, any a4, any a5, any a6, any a7, any a8) <static> { # offset: 0x0665, code offset: 0x1ea4
+#   CODE:
+	mov v0, a0                                        # offset: 0x1ea9, [V4_V4].............[0x44 0xf0]
+	mov v1, a1                                        # offset: 0x1eab, [V8_V8].............[0x45 0x01 0x10]
+	mov v2, a2                                        # offset: 0x1eae, [V8_V8].............[0x45 0x02 0x11]
+	mov v3, a3                                        # offset: 0x1eb1, [V8_V8].............[0x45 0x03 0x12]
+	mov v4, a4                                        # offset: 0x1eb4, [V8_V8].............[0x45 0x04 0x13]
+	mov v5, a5                                        # offset: 0x1eb7, [V8_V8].............[0x45 0x05 0x14]
+	mov v6, a6                                        # offset: 0x1eba, [V8_V8].............[0x45 0x06 0x15]
+	mov v7, a7                                        # offset: 0x1ebd, [V8_V8].............[0x45 0x07 0x16]
+	mov v8, a8                                        # offset: 0x1ec0, [V8_V8].............[0x45 0x08 0x17]
+	lda v6                                            # offset: 0x1ec3, [V8]................[0x60 0x06]
+	sta v10                                           # offset: 0x1ec5, [V8]................[0x61 0x0a]
+	ldundefined                                       # offset: 0x1ec7, [NONE]..............[0x00]
+	stricteq 0x0, v10                                 # offset: 0x1ec8, [IMM8_V8]...........[0x28 0x00 0x0a]
+	jeqz jump_label_0                                 # offset: 0x1ecb, [IMM8]..............[0x4f 0x0f]
+	ldai 0x1                                          # offset: 0x1ecd, [IMM32].............[0x62 0x01 0x00 0x00 0x00]
+	sta v10                                           # offset: 0x1ed2, [V8]................[0x61 0x0a]
+	lda v10                                           # offset: 0x1ed4, [V8]................[0x60 0x0a]
+	neg 0x1                                           # offset: 0x1ed6, [IMM8]..............[0x1f 0x01]
+	sta v6                                            # offset: 0x1ed8, [V8]................[0x61 0x06]
+jump_label_0:
+	lda v7                                            # offset: 0x1eda, [V8]................[0x60 0x07]
+	sta v10                                           # offset: 0x1edc, [V8]................[0x61 0x0a]
+	ldundefined                                       # offset: 0x1ede, [NONE]..............[0x00]
+	stricteq 0x2, v10                                 # offset: 0x1edf, [IMM8_V8]...........[0x28 0x02 0x0a]
+	jeqz jump_label_1                                 # offset: 0x1ee2, [IMM8]..............[0x4f 0x05]
+	ldundefined                                       # offset: 0x1ee4, [NONE]..............[0x00]
+	sta v7                                            # offset: 0x1ee5, [V8]................[0x61 0x07]
+jump_label_1:
+	lda v3                                            # offset: 0x1ee7, [V8]................[0x60 0x03]
+	sta v10                                           # offset: 0x1ee9, [V8]................[0x61 0x0a]
+	lda v5                                            # offset: 0x1eeb, [V8]................[0x60 0x05]
+	sta v11                                           # offset: 0x1eed, [V8]................[0x61 0x0b]
+	lda v6                                            # offset: 0x1eef, [V8]................[0x60 0x06]
+	sta v12                                           # offset: 0x1ef1, [V8]................[0x61 0x0c]
+	lda v8                                            # offset: 0x1ef3, [V8]................[0x60 0x08]
+	sta v13                                           # offset: 0x1ef5, [V8]................[0x61 0x0d]
+	supercallthisrange 0x3, 0x4, v10                  # offset: 0x1ef7, [IMM8_IMM8_V8]......[0x32 0x03 0x04 0x0a]
+	sta v10                                           # offset: 0x1efb, [V8]................[0x61 0x0a]
+	lda v2                                            # offset: 0x1efd, [V8]................[0x60 0x02]
+	throw.ifsupernotcorrectcall 0x1                   # offset: 0x1eff, [PREF_IMM8].........[0xfe 0x07 0x01]
+	lda v10                                           # offset: 0x1f02, [V8]................[0x60 0x0a]
+	sta v2                                            # offset: 0x1f04, [V8]................[0x61 0x02]
+	lda v7                                            # offset: 0x1f06, [V8]................[0x60 0x07]
+	typeof 0x5                                        # offset: 0x1f08, [IMM8]..............[0x1c 0x05]
+	sta v10                                           # offset: 0x1f0a, [V8]................[0x61 0x0a]
+	lda.str "function"                                # offset: 0x1f0c, [ID16]..............[0x3e 0x45 0x00]
+	stricteq 0x7, v10                                 # offset: 0x1f0f, [IMM8_V8]...........[0x28 0x07 0x0a]
+	jeqz jump_label_2                                 # offset: 0x1f12, [IMM8]..............[0x4f 0x10]
+	lda v2                                            # offset: 0x1f14, [V8]................[0x60 0x02]
+	throw.ifsupernotcorrectcall 0x0                   # offset: 0x1f16, [PREF_IMM8].........[0xfe 0x07 0x00]
+	sta v10                                           # offset: 0x1f19, [V8]................[0x61 0x0a]
+	lda v7                                            # offset: 0x1f1b, [V8]................[0x60 0x07]
+	stobjbyname 0x8, "paramsGenerator_", v10          # offset: 0x1f1d, [IMM8_ID16_V8]......[0x43 0x08 0x51 0x00 0x0a]
+jump_label_2:
+	lda v2                                            # offset: 0x1f22, [V8]................[0x60 0x02]
+	throw.ifsupernotcorrectcall 0x0                   # offset: 0x1f24, [PREF_IMM8].........[0xfe 0x07 0x00]
+	sta v10                                           # offset: 0x1f27, [V8]................[0x61 0x0a]
+	tryldglobalbyname 0xa, "ObservedPropertySimplePU" # offset: 0x1f29, [IMM8_ID16].........[0x3f 0x0a 0x32 0x00]
+	sta v11                                           # offset: 0x1f2d, [V8]................[0x61 0x0b]
+	lda.str "Hello World"                             # offset: 0x1f2f, [ID16]..............[0x3e 0x2e 0x00]
+	sta v12                                           # offset: 0x1f32, [V8]................[0x61 0x0c]
+	lda v2                                            # offset: 0x1f34, [V8]................[0x60 0x02]
+	throw.ifsupernotcorrectcall 0x0                   # offset: 0x1f36, [PREF_IMM8].........[0xfe 0x07 0x00]
+	sta v13                                           # offset: 0x1f39, [V8]................[0x61 0x0d]
+	lda.str "message"                                 # offset: 0x1f3b, [ID16]..............[0x3e 0x4c 0x00]
+	sta v14                                           # offset: 0x1f3e, [V8]................[0x61 0x0e]
+	newobjrange 0xb, 0x4, v11                         # offset: 0x1f40, [IMM8_IMM8_V8]......[0x08 0x0b 0x04 0x0b]
+	stobjbyname 0xd, "__message", v10                 # offset: 0x1f44, [IMM8_ID16_V8]......[0x43 0x0d 0x3a 0x00 0x0a]
+	lda v2                                            # offset: 0x1f49, [V8]................[0x60 0x02]
+	throw.ifsupernotcorrectcall 0x0                   # offset: 0x1f4b, [PREF_IMM8].........[0xfe 0x07 0x00]
+	sta v11                                           # offset: 0x1f4e, [V8]................[0x61 0x0b]
+	lda v11                                           # offset: 0x1f50, [V8]................[0x60 0x0b]
+	ldobjbyname 0xf, "setInitiallyProvidedValue"      # offset: 0x1f52, [IMM8_ID16].........[0x42 0x0f 0x57 0x00]
+	sta v10                                           # offset: 0x1f56, [V8]................[0x61 0x0a]
+	lda v4                                            # offset: 0x1f58, [V8]................[0x60 0x04]
+	sta v12                                           # offset: 0x1f5a, [V8]................[0x61 0x0c]
+	lda v10                                           # offset: 0x1f5c, [V8]................[0x60 0x0a]
+	callthis1 0x11, v11, v12                          # offset: 0x1f5e, [IMM8_V8_V8]........[0x2e 0x11 0x0b 0x0c]
+	lda v2                                            # offset: 0x1f62, [V8]................[0x60 0x02]
+	throw.ifsupernotcorrectcall 0x0                   # offset: 0x1f64, [PREF_IMM8].........[0xfe 0x07 0x00]
+	sta v11                                           # offset: 0x1f67, [V8]................[0x61 0x0b]
+	lda v11                                           # offset: 0x1f69, [V8]................[0x60 0x0b]
+	ldobjbyname 0x13, "finalizeConstruction"          # offset: 0x1f6b, [IMM8_ID16].........[0x42 0x13 0x42 0x00]
+	sta v10                                           # offset: 0x1f6f, [V8]................[0x61 0x0a]
+	lda v10                                           # offset: 0x1f71, [V8]................[0x60 0x0a]
+	callthis0 0x15, v11                               # offset: 0x1f73, [IMM8_V8]...........[0x2d 0x15 0x0b]
+	lda v2                                            # offset: 0x1f76, [V8]................[0x60 0x02]
+	throw.ifsupernotcorrectcall 0x0                   # offset: 0x1f78, [PREF_IMM8].........[0xfe 0x07 0x00]
+	return                                            # offset: 0x1f7b, [NONE]..............[0x64]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 7: 26
+#	line 8: 62
+#	line 9: 93
+#	line 10: 107
+#	line 12: 121
+#	line 13: 160
+#	line 14: 185
+#	line 18446744073709551615: 205
+#	line 15: 210
+
+#   COLUMN_NUMBER_TABLE:
+#	column 48: 26
+#	column 15: 28
+#	column 58: 36
+#	column 57: 41
+#	column 48: 47
+#	column 61: 49
+#	column 15: 51
+#	column 76: 59
+#	column 61: 60
+#	column 14: 62
+#	column 22: 66
+#	column 38: 70
+#	column 46: 74
+#	column 8: 78
+#	column 19: 93
+#	column 12: 95
+#	column 36: 99
+#	column 12: 102
+#	column 36: 114
+#	column 12: 116
+#	column 8: 121
+#	column 29: 128
+#	column 25: 132
+#	column 54: 134
+#	column 25: 137
+#	column 69: 139
+#	column 25: 144
+#	column 75: 146
+#	column 25: 149
+#	column 8: 155
+#	column 39: 175
+#	column 8: 179
+#	column 18446744073709551615: 205
+#	column 5: 210
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	    26   211     0(v0)       4funcObj   any
+#	    26   211     1(v1)     4newTarget   any
+#	    26   211     5(v5) __localStorage   any
+#	    26   211     6(v6)         elmtId   any
+#	    26   211     8(v8)      extraInfo   any
+#	    26   211     4(v4)         params   any
+#	    26   211     7(v7)   paramsLambda   any
+#	    26   211     3(v3)         parent   any
+#	    26   211     2(v2)           this   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x17 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#aboutToBeDeleted(any a0, any a1, any a2) <static> { # offset: 0x077b, code offset: 0x1f7c
+#   CODE:
+	mov v0, a0                                   # offset: 0x1f80, [V4_V4].............[0x44 0x80]
+	mov v1, a1                                   # offset: 0x1f82, [V4_V4].............[0x44 0x91]
+	mov v2, a2                                   # offset: 0x1f84, [V4_V4].............[0x44 0xa2]
+	lda v2                                       # offset: 0x1f86, [V8]................[0x60 0x02]
+	sta v6                                       # offset: 0x1f88, [V8]................[0x61 0x06]
+	lda v6                                       # offset: 0x1f8a, [V8]................[0x60 0x06]
+	ldobjbyname 0x0, "__message"                 # offset: 0x1f8c, [IMM8_ID16].........[0x42 0x00 0x3a 0x00]
+	sta v5                                       # offset: 0x1f90, [V8]................[0x61 0x05]
+	lda v5                                       # offset: 0x1f92, [V8]................[0x60 0x05]
+	ldobjbyname 0x2, "aboutToBeDeleted"          # offset: 0x1f94, [IMM8_ID16].........[0x42 0x02 0x3b 0x00]
+	sta v4                                       # offset: 0x1f98, [V8]................[0x61 0x04]
+	lda v4                                       # offset: 0x1f9a, [V8]................[0x60 0x04]
+	callthis0 0x4, v5                            # offset: 0x1f9c, [IMM8_V8]...........[0x2d 0x04 0x05]
+	tryldglobalbyname 0x6, "SubscriberManager"   # offset: 0x1f9f, [IMM8_ID16].........[0x3f 0x06 0x35 0x00]
+	sta v7                                       # offset: 0x1fa3, [V8]................[0x61 0x07]
+	lda v7                                       # offset: 0x1fa5, [V8]................[0x60 0x07]
+	ldobjbyname 0x7, "Get"                       # offset: 0x1fa7, [IMM8_ID16].........[0x42 0x07 0x2d 0x00]
+	sta v6                                       # offset: 0x1fab, [V8]................[0x61 0x06]
+	lda v6                                       # offset: 0x1fad, [V8]................[0x60 0x06]
+	callthis0 0x9, v7                            # offset: 0x1faf, [IMM8_V8]...........[0x2d 0x09 0x07]
+	sta v5                                       # offset: 0x1fb2, [V8]................[0x61 0x05]
+	lda v5                                       # offset: 0x1fb4, [V8]................[0x60 0x05]
+	ldobjbyname 0xb, "delete"                    # offset: 0x1fb6, [IMM8_ID16].........[0x42 0x0b 0x41 0x00]
+	sta v4                                       # offset: 0x1fba, [V8]................[0x61 0x04]
+	lda v2                                       # offset: 0x1fbc, [V8]................[0x60 0x02]
+	sta v7                                       # offset: 0x1fbe, [V8]................[0x61 0x07]
+	lda v7                                       # offset: 0x1fc0, [V8]................[0x60 0x07]
+	ldobjbyname 0xd, "id__"                      # offset: 0x1fc2, [IMM8_ID16].........[0x42 0x0d 0x4a 0x00]
+	sta v6                                       # offset: 0x1fc6, [V8]................[0x61 0x06]
+	lda v6                                       # offset: 0x1fc8, [V8]................[0x60 0x06]
+	callthis0 0xf, v7                            # offset: 0x1fca, [IMM8_V8]...........[0x2d 0x0f 0x07]
+	sta v6                                       # offset: 0x1fcd, [V8]................[0x61 0x06]
+	lda v4                                       # offset: 0x1fcf, [V8]................[0x60 0x04]
+	callthis1 0x11, v5, v6                       # offset: 0x1fd1, [IMM8_V8_V8]........[0x2e 0x11 0x05 0x06]
+	lda v2                                       # offset: 0x1fd5, [V8]................[0x60 0x02]
+	sta v5                                       # offset: 0x1fd7, [V8]................[0x61 0x05]
+	lda v5                                       # offset: 0x1fd9, [V8]................[0x60 0x05]
+	ldobjbyname 0x13, "aboutToBeDeletedInternal" # offset: 0x1fdb, [IMM8_ID16].........[0x42 0x13 0x3c 0x00]
+	sta v4                                       # offset: 0x1fdf, [V8]................[0x61 0x04]
+	lda v4                                       # offset: 0x1fe1, [V8]................[0x60 0x04]
+	callthis0 0x15, v5                           # offset: 0x1fe3, [IMM8_V8]...........[0x2d 0x15 0x05]
+	ldundefined                                  # offset: 0x1fe6, [NONE]..............[0x00]
+	returnundefined                              # offset: 0x1fe7, [NONE]..............[0x65]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 27: 6
+#	line 28: 31
+#	line 29: 85
+#	line 18446744073709551615: 102
+#	line 30: 103
+
+#   COLUMN_NUMBER_TABLE:
+#	column 8: 6
+#	column 39: 60
+#	column 8: 79
+#	column 18446744073709551615: 102
+#	column 5: 103
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	     6   104     0(v0)       4funcObj   any
+#	     6   104     1(v1)     4newTarget   any
+#	     6   104     2(v2)           this   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x16 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#initialRender(any a0, any a1, any a2) <static> { # offset: 0x0745, code offset: 0x1fe8
+#   CODE:
+	newlexenvwithname 0x2, { 5 [ i32:2, string:"4newTarget", i32:0, string:"this", i32:1, ]} # offset: 0x1fec, [IMM8_ID16].........[0xb6 0x02 0x69 0x00]
+	mov v0, a0                                   # offset: 0x1ff0, [V4_V4].............[0x44 0x80]
+	lda a1                                       # offset: 0x1ff2, [V8]................[0x60 0x09]
+	stlexvar 0x0, 0x0                            # offset: 0x1ff4, [IMM4_IMM4].........[0x3d 0x00]
+	lda a2                                       # offset: 0x1ff6, [V8]................[0x60 0x0a]
+	stlexvar 0x0, 0x1                            # offset: 0x1ff8, [IMM4_IMM4].........[0x3d 0x10]
+	ldlexvar 0x0, 0x1                            # offset: 0x1ffa, [IMM4_IMM4].........[0x3c 0x10]
+	sta v5                                       # offset: 0x1ffc, [V8]................[0x61 0x05]
+	lda v5                                       # offset: 0x1ffe, [V8]................[0x60 0x05]
+	ldobjbyname 0x0, "observeComponentCreation2" # offset: 0x2000, [IMM8_ID16].........[0x42 0x00 0x4e 0x00]
+	sta v4                                       # offset: 0x2004, [V8]................[0x61 0x04]
+	definefunc 0x2, &entry.src.main.ets.pages.Index&.#~@0>@1*#:(any,any,any,any,any), 0x2 # offset: 0x2006, [IMM8_ID16_IMM8]....[0x33 0x02 0x62 0x00 0x02]
+	sta v6                                       # offset: 0x200b, [V8]................[0x61 0x06]
+	tryldglobalbyname 0x3, "RelativeContainer"   # offset: 0x200d, [IMM8_ID16].........[0x3f 0x03 0x34 0x00]
+	sta v7                                       # offset: 0x2011, [V8]................[0x61 0x07]
+	lda v4                                       # offset: 0x2013, [V8]................[0x60 0x04]
+	callthis2 0x4, v5, v6, v7                    # offset: 0x2015, [IMM8_V8_V8_V8].....[0x2f 0x04 0x05 0x06 0x07]
+	ldlexvar 0x0, 0x1                            # offset: 0x201a, [IMM4_IMM4].........[0x3c 0x10]
+	sta v5                                       # offset: 0x201c, [V8]................[0x61 0x05]
+	lda v5                                       # offset: 0x201e, [V8]................[0x60 0x05]
+	ldobjbyname 0x6, "observeComponentCreation2" # offset: 0x2020, [IMM8_ID16].........[0x42 0x06 0x4e 0x00]
+	sta v4                                       # offset: 0x2024, [V8]................[0x61 0x04]
+	definefunc 0x8, &entry.src.main.ets.pages.Index&.#~@0>@1*#^1:(any,any,any,any,any), 0x2 # offset: 0x2026, [IMM8_ID16_IMM8]....[0x33 0x08 0x63 0x00 0x02]
+	sta v6                                       # offset: 0x202b, [V8]................[0x61 0x06]
+	tryldglobalbyname 0x9, "Text"                # offset: 0x202d, [IMM8_ID16].........[0x3f 0x09 0x36 0x00]
+	sta v7                                       # offset: 0x2031, [V8]................[0x61 0x07]
+	lda v4                                       # offset: 0x2033, [V8]................[0x60 0x04]
+	callthis2 0xa, v5, v6, v7                    # offset: 0x2035, [IMM8_V8_V8_V8].....[0x2f 0x0a 0x05 0x06 0x07]
+	tryldglobalbyname 0xc, "Text"                # offset: 0x203a, [IMM8_ID16].........[0x3f 0x0c 0x36 0x00]
+	sta v5                                       # offset: 0x203e, [V8]................[0x61 0x05]
+	lda v5                                       # offset: 0x2040, [V8]................[0x60 0x05]
+	ldobjbyname 0xd, "pop"                       # offset: 0x2042, [IMM8_ID16].........[0x42 0x0d 0x52 0x00]
+	sta v4                                       # offset: 0x2046, [V8]................[0x61 0x04]
+	lda v4                                       # offset: 0x2048, [V8]................[0x60 0x04]
+	callthis0 0xf, v5                            # offset: 0x204a, [IMM8_V8]...........[0x2d 0x0f 0x05]
+	tryldglobalbyname 0x11, "RelativeContainer"  # offset: 0x204d, [IMM8_ID16].........[0x3f 0x11 0x34 0x00]
+	sta v5                                       # offset: 0x2051, [V8]................[0x61 0x05]
+	lda v5                                       # offset: 0x2053, [V8]................[0x60 0x05]
+	ldobjbyname 0x12, "pop"                      # offset: 0x2055, [IMM8_ID16].........[0x42 0x12 0x52 0x00]
+	sta v4                                       # offset: 0x2059, [V8]................[0x61 0x04]
+	lda v4                                       # offset: 0x205b, [V8]................[0x60 0x04]
+	callthis0 0x14, v5                           # offset: 0x205d, [IMM8_V8]...........[0x2d 0x14 0x05]
+	ldundefined                                  # offset: 0x2060, [NONE]..............[0x00]
+	returnundefined                              # offset: 0x2061, [NONE]..............[0x65]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 39: 14
+#	line 43: 33
+#	line 39: 39
+#	line 44: 46
+#	line 56: 65
+#	line 44: 71
+#	line 57: 78
+#	line 58: 97
+#	line 18446744073709551615: 116
+#	line 59: 117
+
+#   COLUMN_NUMBER_TABLE:
+#	column 8: 14
+#	column 39: 26
+#	column 11: 33
+#	column 8: 39
+#	column 39: 58
+#	column 11: 65
+#	column 8: 71
+#	column 18446744073709551615: 116
+#	column 5: 117
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	    14   118     0(v0)       4funcObj   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x6 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#message(any a0, any a1, any a2) <static> { # offset: 0x06d9, code offset: 0x2062
+#   CODE:
+	mov v0, a0                   # offset: 0x2066, [V4_V4].............[0x44 0x70]
+	mov v1, a1                   # offset: 0x2068, [V4_V4].............[0x44 0x81]
+	mov v2, a2                   # offset: 0x206a, [V4_V4].............[0x44 0x92]
+	lda v2                       # offset: 0x206c, [V8]................[0x60 0x02]
+	sta v6                       # offset: 0x206e, [V8]................[0x61 0x06]
+	lda v6                       # offset: 0x2070, [V8]................[0x60 0x06]
+	ldobjbyname 0x0, "__message" # offset: 0x2072, [IMM8_ID16].........[0x42 0x00 0x3a 0x00]
+	sta v5                       # offset: 0x2076, [V8]................[0x61 0x05]
+	lda v5                       # offset: 0x2078, [V8]................[0x60 0x05]
+	ldobjbyname 0x2, "get"       # offset: 0x207a, [IMM8_ID16].........[0x42 0x02 0x46 0x00]
+	sta v4                       # offset: 0x207e, [V8]................[0x61 0x04]
+	lda v4                       # offset: 0x2080, [V8]................[0x60 0x04]
+	callthis0 0x4, v5            # offset: 0x2082, [IMM8_V8]...........[0x2d 0x04 0x05]
+	return                       # offset: 0x2085, [NONE]..............[0x64]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 33: 6
+#	line 34: 31
+
+#   COLUMN_NUMBER_TABLE:
+#	column 15: 6
+#	column 5: 31
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	     6    32     0(v0)       4funcObj   any
+#	     6    32     1(v1)     4newTarget   any
+#	     6    32     2(v2)           this   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x6 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#message^1(any a0, any a1, any a2, any a3) <static> { # offset: 0x070f, code offset: 0x2086
+#   CODE:
+	mov v0, a0                   # offset: 0x208a, [V4_V4].............[0x44 0x80]
+	mov v1, a1                   # offset: 0x208c, [V4_V4].............[0x44 0x91]
+	mov v2, a2                   # offset: 0x208e, [V4_V4].............[0x44 0xa2]
+	mov v3, a3                   # offset: 0x2090, [V4_V4].............[0x44 0xb3]
+	lda v2                       # offset: 0x2092, [V8]................[0x60 0x02]
+	sta v7                       # offset: 0x2094, [V8]................[0x61 0x07]
+	lda v7                       # offset: 0x2096, [V8]................[0x60 0x07]
+	ldobjbyname 0x0, "__message" # offset: 0x2098, [IMM8_ID16].........[0x42 0x00 0x3a 0x00]
+	sta v6                       # offset: 0x209c, [V8]................[0x61 0x06]
+	lda v6                       # offset: 0x209e, [V8]................[0x60 0x06]
+	ldobjbyname 0x2, "set"       # offset: 0x20a0, [IMM8_ID16].........[0x42 0x02 0x56 0x00]
+	sta v5                       # offset: 0x20a4, [V8]................[0x61 0x05]
+	lda v3                       # offset: 0x20a6, [V8]................[0x60 0x03]
+	sta v7                       # offset: 0x20a8, [V8]................[0x61 0x07]
+	lda v5                       # offset: 0x20aa, [V8]................[0x60 0x05]
+	callthis1 0x4, v6, v7        # offset: 0x20ac, [IMM8_V8_V8]........[0x2e 0x04 0x06 0x07]
+	ldundefined                  # offset: 0x20b0, [NONE]..............[0x00]
+	returnundefined              # offset: 0x20b1, [NONE]..............[0x65]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 36: 8
+#	line 18446744073709551615: 38
+#	line 37: 39
+
+#   COLUMN_NUMBER_TABLE:
+#	column 8: 8
+#	column 27: 28
+#	column 8: 32
+#	column 18446744073709551615: 38
+#	column 5: 39
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	     8    40     0(v0)       4funcObj   any
+#	     8    40     1(v1)     4newTarget   any
+#	     8    40     3(v3)       newValue   any
+#	     8    40     2(v2)           this   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x6 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#purgeVariableDependenciesOnElmtId(any a0, any a1, any a2, any a3) <static> { # offset: 0x07b1, code offset: 0x20b2
+#   CODE:
+	mov v0, a0                                 # offset: 0x20b6, [V4_V4].............[0x44 0x80]
+	mov v1, a1                                 # offset: 0x20b8, [V4_V4].............[0x44 0x91]
+	mov v2, a2                                 # offset: 0x20ba, [V4_V4].............[0x44 0xa2]
+	mov v3, a3                                 # offset: 0x20bc, [V4_V4].............[0x44 0xb3]
+	lda v2                                     # offset: 0x20be, [V8]................[0x60 0x02]
+	sta v7                                     # offset: 0x20c0, [V8]................[0x61 0x07]
+	lda v7                                     # offset: 0x20c2, [V8]................[0x60 0x07]
+	ldobjbyname 0x0, "__message"               # offset: 0x20c4, [IMM8_ID16].........[0x42 0x00 0x3a 0x00]
+	sta v6                                     # offset: 0x20c8, [V8]................[0x61 0x06]
+	lda v6                                     # offset: 0x20ca, [V8]................[0x60 0x06]
+	ldobjbyname 0x2, "purgeDependencyOnElmtId" # offset: 0x20cc, [IMM8_ID16].........[0x42 0x02 0x53 0x00]
+	sta v5                                     # offset: 0x20d0, [V8]................[0x61 0x05]
+	lda v3                                     # offset: 0x20d2, [V8]................[0x60 0x03]
+	sta v7                                     # offset: 0x20d4, [V8]................[0x61 0x07]
+	lda v5                                     # offset: 0x20d6, [V8]................[0x60 0x05]
+	callthis1 0x4, v6, v7                      # offset: 0x20d8, [IMM8_V8_V8]........[0x2e 0x04 0x06 0x07]
+	ldundefined                                # offset: 0x20dc, [NONE]..............[0x00]
+	returnundefined                            # offset: 0x20dd, [NONE]..............[0x65]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 24: 8
+#	line 18446744073709551615: 38
+#	line 25: 39
+
+#   COLUMN_NUMBER_TABLE:
+#	column 8: 8
+#	column 47: 28
+#	column 8: 32
+#	column 18446744073709551615: 38
+#	column 5: 39
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	     8    40     0(v0)       4funcObj   any
+#	     8    40     1(v1)     4newTarget   any
+#	     8    40     3(v3)       rmElmtId   any
+#	     8    40     2(v2)           this   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x4 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#rerender(any a0, any a1, any a2) <static> { # offset: 0x06f4, code offset: 0x20de
+#   CODE:
+	mov v0, a0                             # offset: 0x20e2, [V4_V4].............[0x44 0x60]
+	mov v1, a1                             # offset: 0x20e4, [V4_V4].............[0x44 0x71]
+	mov v2, a2                             # offset: 0x20e6, [V4_V4].............[0x44 0x82]
+	lda v2                                 # offset: 0x20e8, [V8]................[0x60 0x02]
+	sta v5                                 # offset: 0x20ea, [V8]................[0x61 0x05]
+	lda v5                                 # offset: 0x20ec, [V8]................[0x60 0x05]
+	ldobjbyname 0x0, "updateDirtyElements" # offset: 0x20ee, [IMM8_ID16].........[0x42 0x00 0x58 0x00]
+	sta v4                                 # offset: 0x20f2, [V8]................[0x61 0x04]
+	lda v4                                 # offset: 0x20f4, [V8]................[0x60 0x04]
+	callthis0 0x2, v5                      # offset: 0x20f6, [IMM8_V8]...........[0x2d 0x02 0x05]
+	ldundefined                            # offset: 0x20f9, [NONE]..............[0x00]
+	returnundefined                        # offset: 0x20fa, [NONE]..............[0x65]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 61: 6
+#	line 18446744073709551615: 23
+#	line 62: 24
+
+#   COLUMN_NUMBER_TABLE:
+#	column 8: 6
+#	column 18446744073709551615: 23
+#	column 5: 24
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	     6    25     0(v0)       4funcObj   any
+#	     6    25     1(v1)     4newTarget   any
+#	     6    25     2(v2)           this   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x7 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#setInitiallyProvidedValue(any a0, any a1, any a2, any a3) <static> { # offset: 0x0796, code offset: 0x20fb
+#   CODE:
+	mov v0, a0                     # offset: 0x20ff, [V4_V4].............[0x44 0x70]
+	mov v1, a1                     # offset: 0x2101, [V4_V4].............[0x44 0x81]
+	mov v2, a2                     # offset: 0x2103, [V4_V4].............[0x44 0x92]
+	mov v3, a3                     # offset: 0x2105, [V4_V4].............[0x44 0xa3]
+	lda v3                         # offset: 0x2107, [V8]................[0x60 0x03]
+	sta v6                         # offset: 0x2109, [V8]................[0x61 0x06]
+	lda v6                         # offset: 0x210b, [V8]................[0x60 0x06]
+	ldobjbyname 0x0, "message"     # offset: 0x210d, [IMM8_ID16].........[0x42 0x00 0x4c 0x00]
+	sta v5                         # offset: 0x2111, [V8]................[0x61 0x05]
+	ldundefined                    # offset: 0x2113, [NONE]..............[0x00]
+	strictnoteq 0x2, v5            # offset: 0x2114, [IMM8_V8]...........[0x27 0x02 0x05]
+	jeqz jump_label_0              # offset: 0x2117, [IMM8]..............[0x4f 0x15]
+	lda v2                         # offset: 0x2119, [V8]................[0x60 0x02]
+	sta v5                         # offset: 0x211b, [V8]................[0x61 0x05]
+	lda v3                         # offset: 0x211d, [V8]................[0x60 0x03]
+	sta v6                         # offset: 0x211f, [V8]................[0x61 0x06]
+	lda v6                         # offset: 0x2121, [V8]................[0x60 0x06]
+	ldobjbyname 0x3, "message"     # offset: 0x2123, [IMM8_ID16].........[0x42 0x03 0x4c 0x00]
+	stobjbyname 0x5, "message", v5 # offset: 0x2127, [IMM8_ID16_V8]......[0x43 0x05 0x4c 0x00 0x05]
+jump_label_0:
+	ldundefined                    # offset: 0x212c, [NONE]..............[0x00]
+	returnundefined                # offset: 0x212d, [NONE]..............[0x65]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 17: 8
+#	line 18: 26
+#	line 18446744073709551615: 45
+#	line 20: 46
+
+#   COLUMN_NUMBER_TABLE:
+#	column 12: 8
+#	column 31: 20
+#	column 12: 21
+#	column 27: 30
+#	column 12: 40
+#	column 18446744073709551615: 45
+#	column 5: 46
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	     8    47     0(v0)       4funcObj   any
+#	     8    47     1(v1)     4newTarget   any
+#	     8    47     3(v3)         params   any
+#	     8    47     2(v2)           this   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x0 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>#updateStateVars(any a0, any a1, any a2, any a3) <static> { # offset: 0x0760, code offset: 0x212e
+#   CODE:
+	mov v0, a0      # offset: 0x2132, [V4_V4].............[0x44 0x50]
+	mov v1, a1      # offset: 0x2134, [V4_V4].............[0x44 0x61]
+	mov v2, a2      # offset: 0x2136, [V4_V4].............[0x44 0x72]
+	mov v3, a3      # offset: 0x2138, [V4_V4].............[0x44 0x83]
+	ldundefined     # offset: 0x213a, [NONE]..............[0x00]
+	returnundefined # offset: 0x213b, [NONE]..............[0x65]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 22: 9
+
+#   COLUMN_NUMBER_TABLE:
+#	column 5: 9
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	     8    10     0(v0)       4funcObj   any
+#	     8    10     1(v1)     4newTarget   any
+#	     8    10     3(v3)         params   any
+#	     8    10     2(v2)           this   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0xf }
+.function any &entry.src.main.ets.pages.Index&.#~@0>@1*#(any a0, any a1, any a2, any a3, any a4) <static> { # offset: 0x0649, code offset: 0x213c
+#   CODE:
+	mov v0, a0                                 # offset: 0x2140, [V4_V4].............[0x44 0x90]
+	mov v1, a1                                 # offset: 0x2142, [V4_V4].............[0x44 0xa1]
+	mov v2, a2                                 # offset: 0x2144, [V4_V4].............[0x44 0xb2]
+	mov v3, a3                                 # offset: 0x2146, [V4_V4].............[0x44 0xc3]
+	mov v4, a4                                 # offset: 0x2148, [V4_V4].............[0x44 0xd4]
+	tryldglobalbyname 0x0, "RelativeContainer" # offset: 0x214a, [IMM8_ID16].........[0x3f 0x00 0x34 0x00]
+	sta v7                                     # offset: 0x214e, [V8]................[0x61 0x07]
+	lda v7                                     # offset: 0x2150, [V8]................[0x60 0x07]
+	ldobjbyname 0x1, "create"                  # offset: 0x2152, [IMM8_ID16].........[0x42 0x01 0x40 0x00]
+	sta v6                                     # offset: 0x2156, [V8]................[0x61 0x06]
+	lda v6                                     # offset: 0x2158, [V8]................[0x60 0x06]
+	callthis0 0x3, v7                          # offset: 0x215a, [IMM8_V8]...........[0x2d 0x03 0x07]
+	tryldglobalbyname 0x5, "RelativeContainer" # offset: 0x215d, [IMM8_ID16].........[0x3f 0x05 0x34 0x00]
+	sta v7                                     # offset: 0x2161, [V8]................[0x61 0x07]
+	lda v7                                     # offset: 0x2163, [V8]................[0x60 0x07]
+	ldobjbyname 0x6, "height"                  # offset: 0x2165, [IMM8_ID16].........[0x42 0x06 0x48 0x00]
+	sta v6                                     # offset: 0x2169, [V8]................[0x61 0x06]
+	lda.str "100%"                             # offset: 0x216b, [ID16]..............[0x3e 0x29 0x00]
+	sta v8                                     # offset: 0x216e, [V8]................[0x61 0x08]
+	lda v6                                     # offset: 0x2170, [V8]................[0x60 0x06]
+	callthis1 0x8, v7, v8                      # offset: 0x2172, [IMM8_V8_V8]........[0x2e 0x08 0x07 0x08]
+	tryldglobalbyname 0xa, "RelativeContainer" # offset: 0x2176, [IMM8_ID16].........[0x3f 0x0a 0x34 0x00]
+	sta v7                                     # offset: 0x217a, [V8]................[0x61 0x07]
+	lda v7                                     # offset: 0x217c, [V8]................[0x60 0x07]
+	ldobjbyname 0xb, "width"                   # offset: 0x217e, [IMM8_ID16].........[0x42 0x0b 0x59 0x00]
+	sta v6                                     # offset: 0x2182, [V8]................[0x61 0x06]
+	lda.str "100%"                             # offset: 0x2184, [ID16]..............[0x3e 0x29 0x00]
+	sta v8                                     # offset: 0x2187, [V8]................[0x61 0x08]
+	lda v6                                     # offset: 0x2189, [V8]................[0x60 0x06]
+	callthis1 0xd, v7, v8                      # offset: 0x218b, [IMM8_V8_V8]........[0x2e 0x0d 0x07 0x08]
+	ldundefined                                # offset: 0x218f, [NONE]..............[0x00]
+	returnundefined                            # offset: 0x2190, [NONE]..............[0x65]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 40: 10
+#	line 41: 29
+#	line 42: 54
+#	line 18446744073709551615: 79
+#	line 43: 80
+
+#   COLUMN_NUMBER_TABLE:
+#	column 12: 10
+#	column 37: 43
+#	column 12: 48
+#	column 36: 68
+#	column 12: 73
+#	column 18446744073709551615: 79
+#	column 9: 80
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	    10    81     1(v1)     0newTarget   any
+#	    10    81     2(v2)          0this   any
+#	    10    81     0(v0)       4funcObj   any
+#	    10    81     3(v3)         elmtId   any
+#	    10    81     4(v4) isInitialRender   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x39 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>@1*#^1(any a0, any a1, any a2, any a3, any a4) <static> { # offset: 0x0685, code offset: 0x2191
+#   CODE:
+	mov v0, a0                                # offset: 0x2196, [V4_V4].............[0x44 0xb0]
+	mov v1, a1                                # offset: 0x2198, [V4_V4].............[0x44 0xc1]
+	mov v2, a2                                # offset: 0x219a, [V4_V4].............[0x44 0xd2]
+	mov v3, a3                                # offset: 0x219c, [V4_V4].............[0x44 0xe3]
+	mov v4, a4                                # offset: 0x219e, [V4_V4].............[0x44 0xf4]
+	tryldglobalbyname 0x0, "Text"             # offset: 0x21a0, [IMM8_ID16].........[0x3f 0x00 0x36 0x00]
+	sta v7                                    # offset: 0x21a4, [V8]................[0x61 0x07]
+	lda v7                                    # offset: 0x21a6, [V8]................[0x60 0x07]
+	ldobjbyname 0x1, "create"                 # offset: 0x21a8, [IMM8_ID16].........[0x42 0x01 0x40 0x00]
+	sta v6                                    # offset: 0x21ac, [V8]................[0x61 0x06]
+	ldlexvar 0x0, 0x1                         # offset: 0x21ae, [IMM4_IMM4].........[0x3c 0x10]
+	sta v8                                    # offset: 0x21b0, [V8]................[0x61 0x08]
+	lda v8                                    # offset: 0x21b2, [V8]................[0x60 0x08]
+	ldobjbyname 0x3, "message"                # offset: 0x21b4, [IMM8_ID16].........[0x42 0x03 0x4c 0x00]
+	sta v8                                    # offset: 0x21b8, [V8]................[0x61 0x08]
+	lda v6                                    # offset: 0x21ba, [V8]................[0x60 0x06]
+	callthis1 0x5, v7, v8                     # offset: 0x21bc, [IMM8_V8_V8]........[0x2e 0x05 0x07 0x08]
+	tryldglobalbyname 0x7, "Text"             # offset: 0x21c0, [IMM8_ID16].........[0x3f 0x07 0x36 0x00]
+	sta v7                                    # offset: 0x21c4, [V8]................[0x61 0x07]
+	lda v7                                    # offset: 0x21c6, [V8]................[0x60 0x07]
+	ldobjbyname 0x8, "id"                     # offset: 0x21c8, [IMM8_ID16].........[0x42 0x08 0x49 0x00]
+	sta v6                                    # offset: 0x21cc, [V8]................[0x61 0x06]
+	lda.str "HelloWorld"                      # offset: 0x21ce, [ID16]..............[0x3e 0x2f 0x00]
+	sta v8                                    # offset: 0x21d1, [V8]................[0x61 0x08]
+	lda v6                                    # offset: 0x21d3, [V8]................[0x60 0x06]
+	callthis1 0xa, v7, v8                     # offset: 0x21d5, [IMM8_V8_V8]........[0x2e 0x0a 0x07 0x08]
+	tryldglobalbyname 0xc, "Text"             # offset: 0x21d9, [IMM8_ID16].........[0x3f 0x0c 0x36 0x00]
+	sta v7                                    # offset: 0x21dd, [V8]................[0x61 0x07]
+	lda v7                                    # offset: 0x21df, [V8]................[0x60 0x07]
+	ldobjbyname 0xd, "fontSize"               # offset: 0x21e1, [IMM8_ID16].........[0x42 0x0d 0x43 0x00]
+	sta v6                                    # offset: 0x21e5, [V8]................[0x61 0x06]
+	createobjectwithbuffer 0xf, { 10 [ string:"id", i32:16777224, string:"type", i32:10002, string:"params", null_value:0, string:"bundleName", string:"com.example.myapplication", string:"moduleName", string:"entry", ]} # offset: 0x21e7, [IMM8_ID16].........[0x07 0x0f 0x65 0x00]
+	sta v8                                    # offset: 0x21eb, [V8]................[0x61 0x08]
+	createemptyarray 0x10                     # offset: 0x21ed, [IMM8]..............[0x05 0x10]
+	sta v9                                    # offset: 0x21ef, [V8]................[0x61 0x09]
+	definepropertybyname 0x11, "params", v8   # offset: 0x21f1, [IMM8_ID16_V8]......[0xdc 0x11 0x50 0x00 0x08]
+	lda v8                                    # offset: 0x21f6, [V8]................[0x60 0x08]
+	sta v8                                    # offset: 0x21f8, [V8]................[0x61 0x08]
+	lda v6                                    # offset: 0x21fa, [V8]................[0x60 0x06]
+	callthis1 0x13, v7, v8                    # offset: 0x21fc, [IMM8_V8_V8]........[0x2e 0x13 0x07 0x08]
+	tryldglobalbyname 0x15, "Text"            # offset: 0x2200, [IMM8_ID16].........[0x3f 0x15 0x36 0x00]
+	sta v7                                    # offset: 0x2204, [V8]................[0x61 0x07]
+	lda v7                                    # offset: 0x2206, [V8]................[0x60 0x07]
+	ldobjbyname 0x16, "fontWeight"            # offset: 0x2208, [IMM8_ID16].........[0x42 0x16 0x44 0x00]
+	sta v6                                    # offset: 0x220c, [V8]................[0x61 0x06]
+	tryldglobalbyname 0x18, "FontWeight"      # offset: 0x220e, [IMM8_ID16].........[0x3f 0x18 0x2c 0x00]
+	sta v8                                    # offset: 0x2212, [V8]................[0x61 0x08]
+	lda v8                                    # offset: 0x2214, [V8]................[0x60 0x08]
+	ldobjbyname 0x19, "Bold"                  # offset: 0x2216, [IMM8_ID16].........[0x42 0x19 0x2a 0x00]
+	sta v8                                    # offset: 0x221a, [V8]................[0x61 0x08]
+	lda v6                                    # offset: 0x221c, [V8]................[0x60 0x06]
+	callthis1 0x1b, v7, v8                    # offset: 0x221e, [IMM8_V8_V8]........[0x2e 0x1b 0x07 0x08]
+	tryldglobalbyname 0x1d, "Text"            # offset: 0x2222, [IMM8_ID16].........[0x3f 0x1d 0x36 0x00]
+	sta v7                                    # offset: 0x2226, [V8]................[0x61 0x07]
+	lda v7                                    # offset: 0x2228, [V8]................[0x60 0x07]
+	ldobjbyname 0x1e, "alignRules"            # offset: 0x222a, [IMM8_ID16].........[0x42 0x1e 0x3e 0x00]
+	sta v6                                    # offset: 0x222e, [V8]................[0x61 0x06]
+	createobjectwithbuffer 0x20, { 4 [ string:"center", null_value:0, string:"middle", null_value:0, ]} # offset: 0x2230, [IMM8_ID16].........[0x07 0x20 0x66 0x00]
+	sta v8                                    # offset: 0x2234, [V8]................[0x61 0x08]
+	createobjectwithbuffer 0x21, { 4 [ string:"anchor", string:"__container__", string:"align", null_value:0, ]} # offset: 0x2236, [IMM8_ID16].........[0x07 0x21 0x67 0x00]
+	sta v9                                    # offset: 0x223a, [V8]................[0x61 0x09]
+	tryldglobalbyname 0x22, "VerticalAlign"   # offset: 0x223c, [IMM8_ID16].........[0x3f 0x22 0x37 0x00]
+	sta v10                                   # offset: 0x2240, [V8]................[0x61 0x0a]
+	lda v10                                   # offset: 0x2242, [V8]................[0x60 0x0a]
+	ldobjbyname 0x23, "Center"                # offset: 0x2244, [IMM8_ID16].........[0x42 0x23 0x2b 0x00]
+	definepropertybyname 0x25, "align", v9    # offset: 0x2248, [IMM8_ID16_V8]......[0xdc 0x25 0x3d 0x00 0x09]
+	lda v9                                    # offset: 0x224d, [V8]................[0x60 0x09]
+	definepropertybyname 0x27, "center", v8   # offset: 0x224f, [IMM8_ID16_V8]......[0xdc 0x27 0x3f 0x00 0x08]
+	createobjectwithbuffer 0x29, { 4 [ string:"anchor", string:"__container__", string:"align", null_value:0, ]} # offset: 0x2254, [IMM8_ID16].........[0x07 0x29 0x68 0x00]
+	sta v9                                    # offset: 0x2258, [V8]................[0x61 0x09]
+	tryldglobalbyname 0x2a, "HorizontalAlign" # offset: 0x225a, [IMM8_ID16].........[0x3f 0x2a 0x30 0x00]
+	sta v10                                   # offset: 0x225e, [V8]................[0x61 0x0a]
+	lda v10                                   # offset: 0x2260, [V8]................[0x60 0x0a]
+	ldobjbyname 0x2b, "Center"                # offset: 0x2262, [IMM8_ID16].........[0x42 0x2b 0x2b 0x00]
+	definepropertybyname 0x2d, "align", v9    # offset: 0x2266, [IMM8_ID16_V8]......[0xdc 0x2d 0x3d 0x00 0x09]
+	lda v9                                    # offset: 0x226b, [V8]................[0x60 0x09]
+	definepropertybyname 0x2f, "middle", v8   # offset: 0x226d, [IMM8_ID16_V8]......[0xdc 0x2f 0x4d 0x00 0x08]
+	lda v8                                    # offset: 0x2272, [V8]................[0x60 0x08]
+	sta v8                                    # offset: 0x2274, [V8]................[0x61 0x08]
+	lda v6                                    # offset: 0x2276, [V8]................[0x60 0x06]
+	callthis1 0x31, v7, v8                    # offset: 0x2278, [IMM8_V8_V8]........[0x2e 0x31 0x07 0x08]
+	tryldglobalbyname 0x33, "Text"            # offset: 0x227c, [IMM8_ID16].........[0x3f 0x33 0x36 0x00]
+	sta v7                                    # offset: 0x2280, [V8]................[0x61 0x07]
+	lda v7                                    # offset: 0x2282, [V8]................[0x60 0x07]
+	ldobjbyname 0x34, "onClick"               # offset: 0x2284, [IMM8_ID16].........[0x42 0x34 0x4f 0x00]
+	sta v6                                    # offset: 0x2288, [V8]................[0x61 0x06]
+	definefunc 0x36, &entry.src.main.ets.pages.Index&.#~@0>@1*^1*#:(any,any,any), 0x0 # offset: 0x228a, [IMM8_ID16_IMM8]....[0x33 0x36 0x64 0x00 0x00]
+	sta v8                                    # offset: 0x228f, [V8]................[0x61 0x08]
+	lda v6                                    # offset: 0x2291, [V8]................[0x60 0x06]
+	callthis1 0x37, v7, v8                    # offset: 0x2293, [IMM8_V8_V8]........[0x2e 0x37 0x07 0x08]
+	ldundefined                               # offset: 0x2297, [NONE]..............[0x00]
+	returnundefined                           # offset: 0x2298, [NONE]..............[0x65]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 45: 10
+#	line 46: 42
+#	line 47: 67
+#	line 48: 106
+#	line 49: 140
+#	line 50: 160
+#	line 49: 185
+#	line 51: 190
+#	line 49: 215
+#	line 53: 230
+#	line 18446744073709551615: 257
+#	line 56: 258
+
+#   COLUMN_NUMBER_TABLE:
+#	column 12: 10
+#	column 24: 24
+#	column 12: 36
+#	column 20: 56
+#	column 12: 61
+#	column 26: 81
+#	column 67: 87
+#	column 26: 91
+#	column 12: 100
+#	column 28: 120
+#	column 12: 134
+#	column 28: 154
+#	column 24: 160
+#	column 58: 166
+#	column 24: 178
+#	column 28: 185
+#	column 24: 190
+#	column 58: 196
+#	column 24: 208
+#	column 28: 215
+#	column 12: 224
+#	column 25: 244
+#	column 12: 251
+#	column 18446744073709551615: 257
+#	column 9: 258
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	    10   259     1(v1)     0newTarget   any
+#	    10   259     2(v2)          0this   any
+#	    10   259     0(v0)       4funcObj   any
+#	    10   259     3(v3)         elmtId   any
+#	    10   259     4(v4) isInitialRender   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x2 }
+.function any &entry.src.main.ets.pages.Index&.#~@0>@1*^1*#(any a0, any a1, any a2) <static> { # offset: 0x06bd, code offset: 0x2299
+#   CODE:
+	mov v0, a0                     # offset: 0x229d, [V4_V4].............[0x44 0x50]
+	mov v1, a1                     # offset: 0x229f, [V4_V4].............[0x44 0x61]
+	mov v2, a2                     # offset: 0x22a1, [V4_V4].............[0x44 0x72]
+	ldlexvar 0x0, 0x1              # offset: 0x22a3, [IMM4_IMM4].........[0x3c 0x10]
+	sta v4                         # offset: 0x22a5, [V8]................[0x61 0x04]
+	lda.str "Welcome"              # offset: 0x22a7, [ID16]..............[0x3e 0x39 0x00]
+	stobjbyname 0x0, "message", v4 # offset: 0x22aa, [IMM8_ID16_V8]......[0x43 0x00 0x4c 0x00 0x04]
+	ldundefined                    # offset: 0x22af, [NONE]..............[0x00]
+	returnundefined                # offset: 0x22b0, [NONE]..............[0x65]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 54: 6
+#	line 18446744073709551615: 18
+#	line 55: 19
+
+#   COLUMN_NUMBER_TABLE:
+#	column 16: 6
+#	column 31: 10
+#	column 16: 13
+#	column 18446744073709551615: 18
+#	column 13: 19
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	     6    20     1(v1)     0newTarget   any
+#	     6    20     2(v2)          0this   any
+#	     6    20     0(v0)       4funcObj   any
+}
+
+L_ESSlotNumberAnnotation:
+	u32 slotNumberIdx { 0x23 }
+.function any &entry.src.main.ets.pages.Index&.func_main_0(any a0, any a1, any a2) <static> { # offset: 0x06a1, code offset: 0x22b1
+#   CODE:
+	newlexenvwithname 0x3, { 7 [ i32:3, string:"Index", i32:0, string:"4newTarget", i32:1, string:"this", i32:2, ]} # offset: 0x22b6, [IMM8_ID16].........[0xb6 0x03 0x6c 0x00]
+	mov v0, a0                                                                 # offset: 0x22ba, [V4_V4].............[0x44 0xc0]
+	lda a1                                                                     # offset: 0x22bc, [V8]................[0x60 0x0d]
+	stlexvar 0x0, 0x1                                                          # offset: 0x22be, [IMM4_IMM4].........[0x3d 0x10]
+	lda a2                                                                     # offset: 0x22c0, [V8]................[0x60 0x0e]
+	stlexvar 0x0, 0x2                                                          # offset: 0x22c2, [IMM4_IMM4].........[0x3d 0x20]
+	lda.str "finalizeConstruction"                                             # offset: 0x22c4, [ID16]..............[0x3e 0x42 0x00]
+	sta v5                                                                     # offset: 0x22c7, [V8]................[0x61 0x05]
+	tryldglobalbyname 0x0, "ViewPU"                                            # offset: 0x22c9, [IMM8_ID16].........[0x3f 0x00 0x38 0x00]
+	sta v6                                                                     # offset: 0x22cd, [V8]................[0x61 0x06]
+	lda v6                                                                     # offset: 0x22cf, [V8]................[0x60 0x06]
+	ldobjbyname 0x1, "prototype"                                               # offset: 0x22d1, [IMM8_ID16].........[0x42 0x01 0x17 0x00]
+	isin 0x3, v5                                                               # offset: 0x22d5, [IMM8_V8]...........[0x25 0x03 0x05]
+	callruntime.istrue 0x4                                                     # offset: 0x22d8, [PREF_IMM8].........[0xfb 0x13 0x04]
+	jnez jump_label_0                                                          # offset: 0x22db, [IMM8]..............[0x51 0x05]
+	ldtrue                                                                     # offset: 0x22dd, [NONE]..............[0x02]
+	jmp jump_label_1                                                           # offset: 0x22de, [IMM8]..............[0x4d 0x03]
+jump_label_0:
+	ldfalse                                                                    # offset: 0x22e0, [NONE]..............[0x03]
+jump_label_1:
+	callruntime.isfalse 0x5                                                    # offset: 0x22e1, [PREF_IMM8].........[0xfb 0x14 0x05]
+	jnez jump_label_2                                                          # offset: 0x22e4, [IMM8]..............[0x51 0x32]
+	tryldglobalbyname 0x6, "Reflect"                                           # offset: 0x22e6, [IMM8_ID16].........[0x3f 0x06 0x33 0x00]
+	sta v6                                                                     # offset: 0x22ea, [V8]................[0x61 0x06]
+	lda v6                                                                     # offset: 0x22ec, [V8]................[0x60 0x06]
+	ldobjbyname 0x7, "set"                                                     # offset: 0x22ee, [IMM8_ID16].........[0x42 0x07 0x56 0x00]
+	sta v5                                                                     # offset: 0x22f2, [V8]................[0x61 0x05]
+	tryldglobalbyname 0x9, "ViewPU"                                            # offset: 0x22f4, [IMM8_ID16].........[0x3f 0x09 0x38 0x00]
+	sta v7                                                                     # offset: 0x22f8, [V8]................[0x61 0x07]
+	lda v7                                                                     # offset: 0x22fa, [V8]................[0x60 0x07]
+	ldobjbyname 0xa, "prototype"                                               # offset: 0x22fc, [IMM8_ID16].........[0x42 0x0a 0x17 0x00]
+	sta v7                                                                     # offset: 0x2300, [V8]................[0x61 0x07]
+	lda.str "finalizeConstruction"                                             # offset: 0x2302, [ID16]..............[0x3e 0x42 0x00]
+	sta v8                                                                     # offset: 0x2305, [V8]................[0x61 0x08]
+	definefunc 0xc, &entry.src.main.ets.pages.Index&.#*#:(any,any,any), 0x0    # offset: 0x2307, [IMM8_ID16_IMM8]....[0x33 0x0c 0x5a 0x00 0x00]
+	sta v9                                                                     # offset: 0x230c, [V8]................[0x61 0x09]
+	lda v5                                                                     # offset: 0x230e, [V8]................[0x60 0x05]
+	callthis3 0xd, v6, v7, v8, v9                                              # offset: 0x2310, [IMM8_V8_V8_V8_V8]..[0x30 0x0d 0x06 0x07 0x08 0x09]
+jump_label_2:
+	tryldglobalbyname 0xf, "ViewPU"                                            # offset: 0x2316, [IMM8_ID16].........[0x3f 0x0f 0x38 0x00]
+	sta v7                                                                     # offset: 0x231a, [V8]................[0x61 0x07]
+	defineclasswithbuffer 0x10, &entry.src.main.ets.pages.Index&.#~@0=#Index:(any,any,any,any,any,any,any,any,any), { 13 [ string:"setInitiallyProvidedValue", method:#~@0>#setInitiallyProvidedValue, method_affiliate:1, string:"updateStateVars", method:#~@0>#updateStateVars, method_affiliate:1, string:"purgeVariableDependenciesOnElmtId", method:#~@0>#purgeVariableDependenciesOnElmtId, method_affiliate:1, string:"aboutToBeDeleted", method:#~@0>#aboutToBeDeleted, method_affiliate:0, i32:4, ]}, 0x3, v7 # offset: 0x231c, [IMM8_ID16_ID16_IMM16_V8][0x35 0x10 0x5d 0x00 0x6a 0x00 0x03 0x00 0x07]
+	sta v5                                                                     # offset: 0x2325, [V8]................[0x61 0x05]
+	sta v6                                                                     # offset: 0x2327, [V8]................[0x61 0x06]
+	lda v5                                                                     # offset: 0x2329, [V8]................[0x60 0x05]
+	ldobjbyname 0x11, "prototype"                                              # offset: 0x232b, [IMM8_ID16].........[0x42 0x11 0x17 0x00]
+	sta v8                                                                     # offset: 0x232f, [V8]................[0x61 0x08]
+	lda.str "message"                                                          # offset: 0x2331, [ID16]..............[0x3e 0x4c 0x00]
+	sta v9                                                                     # offset: 0x2334, [V8]................[0x61 0x09]
+	ldundefined                                                                # offset: 0x2336, [NONE]..............[0x00]
+	sta v10                                                                    # offset: 0x2337, [V8]................[0x61 0x0a]
+	lda v8                                                                     # offset: 0x2339, [V8]................[0x60 0x08]
+	definemethod 0x13, &entry.src.main.ets.pages.Index&.#~@0>#message:(any,any,any), 0x0 # offset: 0x233b, [IMM8_ID16_IMM8]....[0x34 0x13 0x5f 0x00 0x00]
+	sta v11                                                                    # offset: 0x2340, [V8]................[0x61 0x0b]
+	ldfalse                                                                    # offset: 0x2342, [NONE]..............[0x03]
+	definegettersetterbyvalue v8, v9, v11, v10                                 # offset: 0x2343, [V8_V8_V8_V8].......[0xbc 0x08 0x09 0x0b 0x0a]
+	lda.str "message"                                                          # offset: 0x2348, [ID16]..............[0x3e 0x4c 0x00]
+	sta v9                                                                     # offset: 0x234b, [V8]................[0x61 0x09]
+	ldundefined                                                                # offset: 0x234d, [NONE]..............[0x00]
+	sta v10                                                                    # offset: 0x234e, [V8]................[0x61 0x0a]
+	lda v8                                                                     # offset: 0x2350, [V8]................[0x60 0x08]
+	definemethod 0x14, &entry.src.main.ets.pages.Index&.#~@0>#message^1:(any,any,any,any), 0x1 # offset: 0x2352, [IMM8_ID16_IMM8]....[0x34 0x14 0x60 0x00 0x01]
+	sta v11                                                                    # offset: 0x2357, [V8]................[0x61 0x0b]
+	ldfalse                                                                    # offset: 0x2359, [NONE]..............[0x03]
+	definegettersetterbyvalue v8, v9, v10, v11                                 # offset: 0x235a, [V8_V8_V8_V8].......[0xbc 0x08 0x09 0x0a 0x0b]
+	lda v8                                                                     # offset: 0x235f, [V8]................[0x60 0x08]
+	definemethod 0x15, &entry.src.main.ets.pages.Index&.#~@0>#initialRender:(any,any,any), 0x0 # offset: 0x2361, [IMM8_ID16_IMM8]....[0x34 0x15 0x5e 0x00 0x00]
+	stownbyname 0x16, "initialRender", v8                                      # offset: 0x2366, [IMM8_ID16_V8]......[0x7a 0x16 0x4b 0x00 0x08]
+	lda v8                                                                     # offset: 0x236b, [V8]................[0x60 0x08]
+	definemethod 0x18, &entry.src.main.ets.pages.Index&.#~@0>#rerender:(any,any,any), 0x0 # offset: 0x236d, [IMM8_ID16_IMM8]....[0x34 0x18 0x61 0x00 0x00]
+	stownbyname 0x19, "rerender", v8                                           # offset: 0x2372, [IMM8_ID16_V8]......[0x7a 0x19 0x55 0x00 0x08]
+	lda v5                                                                     # offset: 0x2377, [V8]................[0x60 0x05]
+	definemethod 0x1b, &entry.src.main.ets.pages.Index&.#~@0<#getEntryName:(any,any,any), 0x0 # offset: 0x2379, [IMM8_ID16_IMM8]....[0x34 0x1b 0x5c 0x00 0x00]
+	stownbyname 0x1c, "getEntryName", v5                                       # offset: 0x237e, [IMM8_ID16_V8]......[0x7a 0x1c 0x47 0x00 0x05]
+	lda v5                                                                     # offset: 0x2383, [V8]................[0x60 0x05]
+	sta v5                                                                     # offset: 0x2385, [V8]................[0x61 0x05]
+	lda v5                                                                     # offset: 0x2387, [V8]................[0x60 0x05]
+	stlexvar 0x0, 0x0                                                          # offset: 0x2389, [IMM4_IMM4].........[0x3d 0x00]
+	tryldglobalbyname 0x1e, "registerNamedRoute"                               # offset: 0x238b, [IMM8_ID16].........[0x3f 0x1e 0x54 0x00]
+	sta v5                                                                     # offset: 0x238f, [V8]................[0x61 0x05]
+	definefunc 0x1f, &entry.src.main.ets.pages.Index&.#*#^1:(any,any,any), 0x0 # offset: 0x2391, [IMM8_ID16_IMM8]....[0x33 0x1f 0x5b 0x00 0x00]
+	sta v6                                                                     # offset: 0x2396, [V8]................[0x61 0x06]
+	lda.str ""                                                                 # offset: 0x2398, [ID16]..............[0x3e 0x28 0x00]
+	sta v7                                                                     # offset: 0x239b, [V8]................[0x61 0x07]
+	createobjectwithbuffer 0x20, { 12 [ string:"bundleName", string:"com.example.myapplication", string:"moduleName", string:"entry", string:"pagePath", string:"pages/Index", string:"pageFullPath", string:"entry/src/main/ets/pages/Index", string:"integratedHsp", string:"false", string:"moduleType", string:"followWithHap", ]} # offset: 0x239d, [IMM8_ID16].........[0x07 0x20 0x6b 0x00]
+	sta v8                                                                     # offset: 0x23a1, [V8]................[0x61 0x08]
+	lda v8                                                                     # offset: 0x23a3, [V8]................[0x60 0x08]
+	sta v8                                                                     # offset: 0x23a5, [V8]................[0x61 0x08]
+	lda v5                                                                     # offset: 0x23a7, [V8]................[0x60 0x05]
+	callargs3 0x21, v6, v7, v8                                                 # offset: 0x23a9, [IMM8_V8_V8_V8].....[0x2c 0x21 0x06 0x07 0x08]
+	ldundefined                                                                # offset: 0x23ae, [NONE]..............[0x00]
+	returnundefined                                                            # offset: 0x23af, [NONE]..............[0x65]
+
+#   LINE_NUMBER_TABLE:
+#	line 18446744073709551615: 0
+#	line 0: 14
+#	line 1: 48
+#	line 6: 96
+#	line 32: 123
+#	line 6: 128
+#	line 32: 133
+#	line 6: 140
+#	line 35: 146
+#	line 6: 151
+#	line 35: 156
+#	line 6: 163
+#	line 38: 171
+#	line 6: 181
+#	line 60: 183
+#	line 6: 193
+#	line 63: 195
+#	line 6: 205
+#	line 67: 213
+#	line 18446744073709551615: 248
+
+#   COLUMN_NUMBER_TABLE:
+#	column 6: 14
+#	column 32: 17
+#	column 4: 34
+#	column 16: 62
+#	column 34: 76
+#	column 58: 81
+#	column 4: 88
+#	column 20: 96
+#	column 27: 100
+#	column 6: 113
+#	column 27: 115
+#	column 8: 123
+#	column 27: 128
+#	column 15: 133
+#	column 27: 140
+#	column 8: 146
+#	column 27: 151
+#	column 15: 156
+#	column 27: 163
+#	column 17: 171
+#	column 4: 176
+#	column 27: 181
+#	column 12: 183
+#	column 4: 188
+#	column 27: 193
+#	column 23: 195
+#	column 4: 200
+#	column 27: 205
+#	column 6: 207
+#	column 0: 213
+#	column 19: 219
+#	column 51: 226
+#	column 55: 231
+#	column 0: 241
+#	column 18446744073709551615: 248
+
+#   LOCAL_VARIABLE_TABLE:
+#	 Start   End  Register           Name   Signature
+#	    14   250     3(v3)  #Index_Params   any
+#	    14   250     0(v0)       4funcObj   any
+#	    96   207     6(v6)          Index   any
+}
+
+# ====================
+# STRING
+
+[offset:0x8da, name_value:%{public}s]
+[offset:0x964, name_value:Ability onBackground]
+[offset:0x97a, name_value:Ability onCreate]
+[offset:0x98c, name_value:Ability onDestroy]
+[offset:0x99f, name_value:Ability onForeground]
+[offset:0x9b5, name_value:Ability onWindowStageCreate]
+[offset:0x9d2, name_value:Ability onWindowStageDestroy]
+[offset:0x9f0, name_value:COLOR_MODE_NOT_SET]
+[offset:0xa04, name_value:ColorMode]
+[offset:0xa0f, name_value:ConfigurationConstant]
+[offset:0xa26, name_value:DOMAIN]
+[offset:0xa2e, name_value:Failed to load the content. Cause: %{public}s]
+[offset:0xa5d, name_value:JSON]
+[offset:0xa63, name_value:Succeeded in loading the content.]
+[offset:0xa86, name_value:UIAbility]
+[offset:0xa91, name_value:code]
+[offset:0xa97, name_value:context]
+[offset:0xaa0, name_value:error]
+[offset:0xaa7, name_value:getApplicationContext]
+[offset:0xabe, name_value:hilog]
+[offset:0xac5, name_value:info]
+[offset:0xacb, name_value:loadContent]
+[offset:0xad8, name_value:pages/Index]
+[offset:0xae5, name_value:prototype]
+[offset:0xaf0, name_value:setColorMode]
+[offset:0xafe, name_value:stringify]
+[offset:0xb09, name_value:testTag]
+[offset:0xddf, name_value:BackupExtensionAbility]
+[offset:0xdf7, name_value:Promise]
+[offset:0xe00, name_value:onBackup ok]
+[offset:0xe0d, name_value:onRestore ok %{public}s]
+[offset:0xe26, name_value:resolve]
+[offset:0xf16, name_value:]
+[offset:0x111b, name_value:100%]
+[offset:0x1121, name_value:Bold]
+[offset:0x1127, name_value:Center]
+[offset:0x112f, name_value:FontWeight]
+[offset:0x113b, name_value:Get]
+[offset:0x1140, name_value:Hello World]
+[offset:0x114d, name_value:HelloWorld]
+[offset:0x1159, name_value:HorizontalAlign]
+[offset:0x116a, name_value:Index]
+[offset:0x1171, name_value:ObservedPropertySimplePU]
+[offset:0x118b, name_value:Reflect]
+[offset:0x1194, name_value:RelativeContainer]
+[offset:0x11a7, name_value:SubscriberManager]
+[offset:0x11ba, name_value:Text]
+[offset:0x11c0, name_value:VerticalAlign]
+[offset:0x11cf, name_value:ViewPU]
+[offset:0x11d7, name_value:Welcome]
+[offset:0x11e0, name_value:__message]
+[offset:0x11eb, name_value:aboutToBeDeleted]
+[offset:0x11fd, name_value:aboutToBeDeletedInternal]
+[offset:0x1217, name_value:align]
+[offset:0x121e, name_value:alignRules]
+[offset:0x122a, name_value:center]
+[offset:0x1232, name_value:create]
+[offset:0x123a, name_value:delete]
+[offset:0x1242, name_value:finalizeConstruction]
+[offset:0x1258, name_value:fontSize]
+[offset:0x1262, name_value:fontWeight]
+[offset:0x126e, name_value:function]
+[offset:0x1278, name_value:get]
+[offset:0x127d, name_value:getEntryName]
+[offset:0x128b, name_value:height]
+[offset:0x1293, name_value:id]
+[offset:0x1297, name_value:id__]
+[offset:0x129d, name_value:initialRender]
+[offset:0x12ac, name_value:message]
+[offset:0x12b5, name_value:middle]
+[offset:0x12bd, name_value:observeComponentCreation2]
+[offset:0x12d8, name_value:onClick]
+[offset:0x12e1, name_value:params]
+[offset:0x12e9, name_value:paramsGenerator_]
+[offset:0x12fb, name_value:pop]
+[offset:0x1300, name_value:purgeDependencyOnElmtId]
+[offset:0x1319, name_value:registerNamedRoute]
+[offset:0x132d, name_value:rerender]
+[offset:0x1337, name_value:set]
+[offset:0x133c, name_value:setInitiallyProvidedValue]
+[offset:0x1357, name_value:updateDirtyElements]
+[offset:0x136c, name_value:width]

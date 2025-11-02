@@ -2,6 +2,7 @@
 
 pub mod abc;
 pub mod abc_binary;
+pub mod abc_bytecode;
 pub mod abc_literals;
 pub mod abc_types;
 pub mod attributes;
@@ -13,6 +14,7 @@ pub mod file;
 pub mod functions;
 pub mod header;
 pub mod instructions;
+pub mod instructions_generated;
 pub mod isa_generated;
 pub mod parser;
 pub mod types;

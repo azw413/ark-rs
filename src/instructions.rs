@@ -2,6 +2,7 @@
 
 use std::borrow::Cow;
 
+use crate::isa_generated::INSTRUCTION_TABLE;
 use crate::types::{FieldId, FunctionId, StringId, TypeDescriptor, TypeId};
 
 /// Zero-based instruction index within a function body.
@@ -162,6 +163,7 @@ pub enum InstructionFormat {
     IMM8,
     IMM8_ID16,
     IMM8_ID16_IMM8,
+    IMM8_ID16_IMM16,
     IMM8_ID16_V8,
     IMM8_ID16_ID16_IMM16_V8,
     IMM8_IMM8,
@@ -177,12 +179,16 @@ pub enum InstructionFormat {
     IMM16,
     IMM16_ID16,
     IMM16_ID16_IMM8,
+    IMM16_ID16_IMM16,
+    IMM16_ID16_IMM16_V8,
     IMM16_ID16_V8,
     IMM16_ID16_ID16_IMM16_V8,
     IMM16_IMM16,
     IMM16_IMM8_V8,
+    IMM16_IMM16_V8,
     IMM16_V8,
     IMM16_V8_IMM16,
+    IMM16_V8_IMM32,
     IMM16_V8_V8,
     IMM32,
     IMM64,
@@ -191,21 +197,30 @@ pub enum InstructionFormat {
     PREF_IMM8_V8,
     PREF_IMM8_V8_V8,
     PREF_IMM8_IMM8,
+    PREF_IMM8_IMM8_V8,
     PREF_IMM8_IMM32_V8,
     PREF_IMM8_IMM16_IMM16_V8,
     PREF_IMM4_IMM4,
+    PREF_IMM4_IMM4_V8,
     PREF_IMM16,
     PREF_IMM16_V8,
     PREF_IMM16_V8_V8,
     PREF_IMM16_ID16,
     PREF_IMM16_ID16_ID16_IMM16_V8,
     PREF_IMM16_IMM16,
+    PREF_IMM16_IMM16_V8,
     PREF_IMM32,
     PREF_V8,
     PREF_V8_V8,
+    PREF_V8_V8_V8,
+    PREF_V8_V8_V8_V8,
     PREF_V8_ID16,
     PREF_V8_IMM32,
     PREF_ID16,
+    PREF_ID16_IMM16_IMM16_V8_V8,
+    PREF_ID32,
+    PREF_ID32_IMM8,
+    PREF_ID32_V8,
     V4_V4,
     V8,
     V8_IMM8,
@@ -599,16 +614,24 @@ impl Opcode {
 
     /// Canonical instruction format associated with this opcode.
     pub fn canonical_format(&self) -> InstructionFormat {
+        let mnemonic = self.mnemonic();
+        let target = mnemonic.as_ref();
+
+        if let Some(entry) = INSTRUCTION_TABLE.iter().flatten().find(|entry| {
+            entry
+                .signature
+                .split_whitespace()
+                .next()
+                .map(|sig| sig.trim_end_matches(','))
+                .map(|sig| sig == target)
+                .unwrap_or(false)
+        }) {
+            return entry.format;
+        }
+
+        // Fall back to hardcoded special cases for edge cases
         match self {
-            Opcode::GetModuleNamespace => InstructionFormat::IMM8,
-            Opcode::Ldai => InstructionFormat::IMM32,
-            Opcode::StModuleVar => InstructionFormat::IMM8,
-            Opcode::LdExternalModuleVar => InstructionFormat::IMM8,
-            Opcode::Sta => InstructionFormat::V8,
             Opcode::ThrowUndefinedIfHoleWithName => InstructionFormat::PREF_ID16,
-            Opcode::Lda => InstructionFormat::V8,
-            Opcode::Add2 => InstructionFormat::IMM8_V8,
-            Opcode::LdLocalModuleVar => InstructionFormat::IMM8,
             _ => InstructionFormat::NONE,
         }
     }

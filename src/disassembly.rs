@@ -204,10 +204,13 @@ fn missing_string(id: StringId) -> String {
 
 fn fallback_param_name(index: usize) -> &'static str {
     match index {
-        0 => "arg0",
-        1 => "arg1",
-        2 => "arg2",
-        _ => "arg",
+        0 => "a0",
+        1 => "a1",
+        2 => "a2",
+        3 => "a3",
+        4 => "a4",
+        5 => "a5",
+        _ => "a",
     }
 }
 
