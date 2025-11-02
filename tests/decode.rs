@@ -1,6 +1,14 @@
 use ark_rs::abc_bytecode::decode_function_body;
 use ark_rs::instructions::{Operand, RegisterOperand};
 use ark_rs::types::{FieldType, FunctionId, FunctionSignature, PrimitiveType, TypeDescriptor};
+use ark_rs::{abc_binary::BinaryAbcFile, abc_types::AbcMethodItem};
+
+fn find_method<'a>(methods: &'a [AbcMethodItem], name: &str) -> &'a AbcMethodItem {
+    methods
+        .iter()
+        .find(|method| method.name.value == name)
+        .unwrap_or_else(|| panic!("missing method {name}"))
+}
 
 #[test]
 fn decode_on_create_matches_reference() {
@@ -52,4 +60,17 @@ fn decode_on_create_matches_reference() {
         }
         other => panic!("unexpected operands for first instruction: {:?}", other),
     }
+}
+
+#[test]
+fn binary_method_index_resolves_code_offsets() {
+    let data = std::fs::read("test-data/modules.abc").expect("read modules.abc");
+    let binary = BinaryAbcFile::parse(&data).expect("parse binary abc");
+    let code_map = binary.method_code_map();
+
+    let entry_on_create = find_method(&binary.methods, "#~@0>#onCreate");
+    assert_eq!(code_map.get(&entry_on_create.name.offset), Some(&0x1aac));
+
+    let entry_func_main = find_method(&binary.methods, "func_main_0");
+    assert_eq!(code_map.get(&entry_func_main.name.offset), Some(&0x1cc6));
 }

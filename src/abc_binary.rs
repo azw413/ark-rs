@@ -25,13 +25,12 @@ pub struct BinaryAbcFile {
     pub record_offsets: Vec<u32>,
     pub method_index: Vec<MethodIndexEntry>,
     pub methods: Vec<AbcMethodItem>,
-    pub method_index_entries: Vec<MethodIndexEntry>, // Store full method index for names
     data: Vec<u8>,
 }
 #[derive(Debug, Clone, Copy)]
 pub struct MethodIndexEntry {
-    pub name_offset: u32,
-    pub code_offset: u32,
+    pub raw_low: u32,
+    pub raw_high: u32,
 }
 impl BinaryAbcFile {
     /// Parses a raw `.abc` binary buffer into a [`BinaryAbcFile`].
@@ -186,49 +185,17 @@ impl BinaryAbcFile {
                 let max_count = (method_index_end - base) / 8;
                 let count = std::cmp::min(index_header.method_index_size as usize, max_count);
 
-                eprintln!(
-                    "Method index: base=0x{:x}, method_offset=0x{:x}, class_offset=0x{:x}, proto_offset=0x{:x}, field_offset=0x{:x}, section_end=0x{:x}",
-                    base,
-                    index_header.method_index_offset,
-                    index_header.class_index_offset,
-                    index_header.proto_index_offset,
-                    index_header.field_index_offset,
-                    section_start + index_header.end as usize
-                );
-                eprintln!(
-                    "  Calculated end=0x{:x}, count={}, max_possible={}",
-                    method_index_end, count, max_count
-                );
-
                 let mut entries = Vec::with_capacity(count);
                 if base > data.len() || base + count.saturating_mul(8) > data.len() {
                     return Err(ArkError::format("method index table exceeds file length"));
                 }
                 for i in 0..count {
                     let pos = base + i * 8;
-                    let name_offset = u32::from_le_bytes(data[pos..pos + 4].try_into().unwrap());
-                    let code_offset =
+                    let raw_low = u32::from_le_bytes(data[pos..pos + 4].try_into().unwrap());
+                    let raw_high =
                         u32::from_le_bytes(data[pos + 4..pos + 8].try_into().unwrap());
-
-                    // Validate that offsets look reasonable (are within file bounds)
-                    // Skip entries with obviously invalid offsets
-                    if name_offset != 0
-                        && name_offset < data.len() as u32
-                        && code_offset < data.len() as u32
-                    {
-                        entries.push(MethodIndexEntry {
-                            name_offset,
-                            code_offset,
-                        });
-                    } else {
-                        eprintln!(
-                            "  Skipping invalid method index entry {}: name_offset=0x{:08x}, code_offset=0x{:08x}",
-                            i, name_offset, code_offset
-                        );
-                        continue;
-                    }
+                    entries.push(MethodIndexEntry { raw_low, raw_high });
                 }
-                eprintln!("  Read {} valid method index entries", entries.len());
                 entries
             }
         } else {
@@ -282,9 +249,8 @@ impl BinaryAbcFile {
             literal_offsets,
             literal_arrays,
             record_offsets: vec![],
-            method_index: method_index.clone(),
+            method_index,
             methods,
-            method_index_entries: method_index.clone(),
             data,
         })
     }
@@ -466,13 +432,7 @@ impl BinaryAbcFile {
             // Skip functions that fail to decode
             let mut decoded_functions = Vec::new();
             let mut method_count = 0;
-            eprintln!("Total methods found: {}", self.methods.len());
-            std::fs::write(
-                "/tmp/debug_methods.txt",
-                format!("Total methods: {}\n", self.methods.len()),
-            )
-            .ok();
-
+            let method_code_map = self.method_code_map();
             let mut debug_log = String::new();
             debug_log.push_str(&format!("Total methods found: {}\n", self.methods.len()));
 
@@ -501,30 +461,20 @@ impl BinaryAbcFile {
                 ));
 
                 // Look up the code offset from the method index or index_data
-                let code_offset = match self.get_code_offset_for_method(item) {
+                let code_offset = match self.get_code_offset_for_method(item, &method_code_map) {
                     Some(offset) => {
-                        eprintln!("  Found code offset from method index: 0x{:04x}", offset);
+                        debug_log.push_str(&format!(
+                            "  Resolved code offset 0x{:04x}\n",
+                            offset
+                        ));
                         offset
                     }
                     None => {
-                        // Try to decode index_data - in ArkTS ABC format, index_data encodes the code offset
-                        // Try different bit extractions to find the actual offset
-                        let decoded_offset = (item.index_data & 0xFFFF) as u32;
-                        eprintln!(
-                            "  Trying index_data: 0x{:08x}, lower 16 bits: 0x{:04x}",
-                            item.index_data, decoded_offset
-                        );
-
-                        if decoded_offset != 0 && decoded_offset < self.data.len() as u32 {
-                            eprintln!("  Using decoded offset: 0x{:04x}", decoded_offset);
-                            decoded_offset
-                        } else {
-                            eprintln!(
-                                "  WARNING: Decoded offset 0x{:04x} is invalid",
-                                decoded_offset
-                            );
-                            continue;
-                        }
+                        debug_log.push_str(&format!(
+                            "  Warning: unable to resolve code offset for '{}'\n",
+                            method_name
+                        ));
+                        continue;
                     }
                 };
 
@@ -535,15 +485,13 @@ impl BinaryAbcFile {
                     .filter(|class_name| !class_name.is_empty())
                     .map(|class_name| {
                         // class_name already has & wrappers from normalize_record_name
-                        // Official format: &class.name&.method& (note the & before .method)
                         if class_name.starts_with('&') && class_name.ends_with('&') {
-                            // Keep the & wrappers and insert method before final &
-                            format!("{}.{}&", class_name, method_name)
+                            format!("{}.{}", class_name, method_name)
                         } else {
-                            format!("&{}.{}&", class_name, method_name)
+                            format!("&{}.{}", class_name, method_name)
                         }
                     })
-                    .unwrap_or_else(|| format!("&{}&", method_name));
+                    .unwrap_or_else(|| method_name.clone());
 
                 let param_str = self.format_method_parameters(item);
 
@@ -552,7 +500,7 @@ impl BinaryAbcFile {
                 match self.decode_function_at_offset(
                     code_offset,
                     FunctionId::new(method_count as u32),
-                    None,
+                    Some(StringId::new(item.name.offset)),
                 ) {
                     Ok(decoded_function) => {
                         debug_log.push_str(&format!(
@@ -582,8 +530,6 @@ impl BinaryAbcFile {
                 decoded_functions.len()
             ));
             debug_log.push_str("=========================\n");
-
-            std::fs::write("/tmp/debug_functions.log", debug_log).ok();
 
             // Create a minimal constant pool for function formatting
             // For binary ABC files, we may not have a full constant pool,
@@ -615,26 +561,38 @@ impl BinaryAbcFile {
                 let formatted_body = match format_function(&function, &temp_constant_pool) {
                     Ok(text) => text,
                     Err(e) => {
-                        eprintln!("Warning: Failed to format function: {}", e);
+                        debug_log.push_str(&format!(
+                            "  Warning: failed to format function '{}': {}\n",
+                            qualified_name, e
+                        ));
                         format!("# Failed to format function: {}", e)
                     }
                 };
 
-                // Replace the function header with the qualified name
-                // The formatted_body starts with ".function any <unnamed>() {"
-                // We want to replace it with ".function any qualified_name() {"
-                let raw_text = if formatted_body.starts_with(".function ") {
-                    // Find the position of the opening brace
-                    if let Some(brace_pos) = formatted_body.find("() {") {
-                        let header = format!(".function any {}", qualified_name);
-                        let after_brace = &formatted_body[brace_pos + 4..];
-                        format!("{}{}", header, after_brace)
+                // Replace the function header with the qualified name while preserving params/flags
+                let mut header_rewritten = String::new();
+                let mut lines_iter = formatted_body.lines();
+                if let Some(first_line) = lines_iter.next() {
+                    if let Some(rest) = first_line.strip_prefix(".function any ") {
+                        if let Some(paren_pos) = rest.find('(') {
+                            let suffix = &rest[paren_pos..];
+                            header_rewritten
+                                .push_str(&format!(".function any {}{}", qualified_name, suffix));
+                        } else {
+                            header_rewritten.push_str(&format!(".function any {}", qualified_name));
+                        }
                     } else {
-                        formatted_body
+                        header_rewritten.push_str(first_line);
+                    }
+                    header_rewritten.push('\n');
+                    for line in lines_iter {
+                        header_rewritten.push_str(line);
+                        header_rewritten.push('\n');
                     }
                 } else {
-                    formatted_body
-                };
+                    header_rewritten = formatted_body;
+                }
+                let raw_text = header_rewritten;
 
                 // Create FunctionEntry with decoded structured data and formatted text
                 let function_entry = FunctionEntry {
@@ -1002,48 +960,158 @@ impl BinaryAbcFile {
             .map(|index| &self.methods[index])
     }
 
-    /// Looks up the code offset for a method item from the method index
-    fn get_code_offset_for_method(&self, method_item: &AbcMethodItem) -> Option<u32> {
-        if let Some(code_tag) = method_item.tags.iter().find(|tag| tag.id == 0x01) {
-            let offset = code_tag.value;
-            if offset != 0 && offset < self.data.len() as u32 {
-                return Some(offset);
-            } else {
-                eprintln!("  Ignoring CODE tag with invalid offset 0x{:08x}", offset);
+    pub fn method_code_map(&self) -> HashMap<u32, u32> {
+        let mut map = HashMap::new();
+        if self.method_index.is_empty() {
+            return map;
+        }
+
+        let data_len = self.data.len() as u32;
+        let mut pending_name: Option<u32> = None;
+
+        for entry in &self.method_index {
+            if pending_name.is_none() {
+                pending_name = Self::extract_name_from_field(entry.raw_low, data_len);
+            }
+            if pending_name.is_none() {
+                pending_name = Self::extract_name_from_field(entry.raw_high, data_len);
+            }
+
+            if let Some(name_offset) = pending_name {
+                if let Some(code_offset) = self.extract_code_from_method_index_entry(entry) {
+                    map.entry(name_offset).or_insert(code_offset);
+                    pending_name = None;
+                }
             }
         }
 
-        // Match by method name offset - the method_index has name_offset and code_offset
-        let method_name_offset = method_item.name.offset;
+        map
+    }
 
-        // Debug: log the method name and offsets
-        eprintln!(
-            "Looking up code offset for method '{}' (name_offset: 0x{:04x})",
-            method_item.name.value, method_name_offset
-        );
-
-        if self.method_index.is_empty() {
-            eprintln!("  WARNING: method_index is empty!");
+    fn extract_name_from_field(raw: u32, data_len: u32) -> Option<u32> {
+        if raw == 0 {
             return None;
         }
+        if (raw & 0xffff) != 0xffff {
+            return None;
+        }
+        let offset = raw >> 16;
+        if offset == 0 || offset >= data_len {
+            return None;
+        }
+        Some(offset)
+    }
 
-        for (i, entry) in self.method_index.iter().enumerate() {
-            eprintln!(
-                "  Method index[{}]: name_offset=0x{:04x}, code_offset=0x{:04x}",
-                i, entry.name_offset, entry.code_offset
-            );
+    fn extract_code_from_method_index_entry(&self, entry: &MethodIndexEntry) -> Option<u32> {
+        let data_len = self.data.len() as u32;
+        let candidates = [
+            entry.raw_low,
+            entry.raw_high,
+            entry.raw_low >> 8,
+            entry.raw_high >> 8,
+        ];
 
-            if entry.name_offset == method_name_offset && entry.code_offset != 0 {
-                eprintln!(
-                    "  MATCH FOUND! Using code_offset: 0x{:04x}",
-                    entry.code_offset
-                );
-                return Some(entry.code_offset);
+        for &candidate in &candidates {
+            if candidate == 0 || candidate >= data_len {
+                continue;
+            }
+            if self.is_plausible_code_offset(candidate) {
+                return Some(candidate);
+            }
+        }
+        None
+    }
+
+    fn is_plausible_code_offset(&self, offset: u32) -> bool {
+        if offset == 0 || (offset as usize) >= self.data.len() {
+            return false;
+        }
+
+        let mut reader = AbcReader::new(&self.data);
+        if reader.seek(offset as usize).is_err() {
+            return false;
+        }
+
+        let start = offset as usize;
+
+        let _register_count = match reader.read_uleb128() {
+            Ok(value) => value,
+            Err(_) => return false,
+        };
+        let _parameter_count = match reader.read_uleb128() {
+            Ok(value) => value,
+            Err(_) => return false,
+        };
+        let code_size = match reader.read_uleb128() {
+            Ok(value) => value as usize,
+            Err(_) => return false,
+        };
+        let exception_handler_count = match reader.read_uleb128() {
+            Ok(value) => value as usize,
+            Err(_) => return false,
+        };
+
+        if code_size == 0 {
+            // Ark bytecode sometimes contains empty stubs; treat them as valid.
+        }
+
+        if reader.read_bytes(code_size).is_err() {
+            return false;
+        }
+
+        for _ in 0..exception_handler_count {
+            if reader.skip(4).is_err()
+                || reader.skip(4).is_err()
+                || reader.skip(4).is_err()
+                || reader.skip(4).is_err()
+                || reader.skip(1).is_err()
+            {
+                return false;
             }
         }
 
-        eprintln!("  No match found in method index - will try index_data next");
+        let consumed = reader.position() - start;
+        start + consumed <= self.data.len()
+    }
+
+    fn extract_code_from_index_data(&self, index_data: u32) -> Option<u32> {
+        let data_len = self.data.len() as u32;
+        let candidates = [
+            index_data >> 16,
+            (index_data >> 8) & 0x00ff_ffff,
+            index_data & 0xffff,
+        ];
+
+        for candidate in candidates {
+            if candidate == 0 || candidate >= data_len {
+                continue;
+            }
+            if self.is_plausible_code_offset(candidate) {
+                return Some(candidate);
+            }
+        }
+
         None
+    }
+
+    /// Looks up the code offset for a method item from the method index
+    fn get_code_offset_for_method(
+        &self,
+        method_item: &AbcMethodItem,
+        method_code_map: &HashMap<u32, u32>,
+    ) -> Option<u32> {
+        if let Some(offset) = method_code_map.get(&method_item.name.offset) {
+            return Some(*offset);
+        }
+
+        if let Some(code_tag) = method_item.tags.iter().find(|tag| tag.id == 0x01) {
+            let offset = code_tag.value;
+            if self.is_plausible_code_offset(offset) {
+                return Some(offset);
+            }
+        }
+
+        self.extract_code_from_index_data(method_item.index_data)
     }
 
     fn class_name_for_offset(&self, offset: u32) -> Option<String> {
