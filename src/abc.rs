@@ -125,11 +125,7 @@ pub fn parse_abc_file(input: &str) -> Result<AbcFile, AbcParseError> {
                 }
                 Err(err) => (None, normalized.clone(), Some(err)),
             };
-            let pool_snapshot = if parsed.is_some() {
-                Some(pool)
-            } else {
-                None
-            };
+            let pool_snapshot = if parsed.is_some() { Some(pool) } else { None };
 
             file.functions.push(FunctionEntry {
                 annotations: pending_annotations.clone(),
@@ -273,7 +269,9 @@ impl AbcFile {
                         }
 
                         if entry.raw_text.is_empty() {
-                            if let (Some(function), Some(pool)) = (&entry.parsed, entry.pool.as_ref()) {
+                            if let (Some(function), Some(pool)) =
+                                (&entry.parsed, entry.pool.as_ref())
+                            {
                                 let text = function.to_string(&entry.annotations, pool);
                                 output.push_str(&text);
                                 if !text.ends_with('\n') {

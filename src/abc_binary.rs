@@ -12,7 +12,7 @@ use crate::file::{ArkBytecodeFile, SectionOffsets};
 use crate::functions::{Function, FunctionKind};
 use crate::header::{Endianness, FileFlags, FileHeader, FileVersion, ModuleKind};
 use crate::types::{FieldType, FunctionId, FunctionSignature, StringId, TypeDescriptor, TypeId};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 /// In-memory representation of a decoded binary ABC module focusing on class metadata.
 #[derive(Debug, Clone)]
 pub struct BinaryAbcFile {
@@ -25,6 +25,7 @@ pub struct BinaryAbcFile {
     pub record_offsets: Vec<u32>,
     pub method_index: Vec<MethodIndexEntry>,
     pub methods: Vec<AbcMethodItem>,
+    pub string_table: Vec<AbcStringEntry>,
     data: Vec<u8>,
 }
 #[derive(Debug, Clone, Copy)]
@@ -192,8 +193,7 @@ impl BinaryAbcFile {
                 for i in 0..count {
                     let pos = base + i * 8;
                     let raw_low = u32::from_le_bytes(data[pos..pos + 4].try_into().unwrap());
-                    let raw_high =
-                        u32::from_le_bytes(data[pos + 4..pos + 8].try_into().unwrap());
+                    let raw_high = u32::from_le_bytes(data[pos + 4..pos + 8].try_into().unwrap());
                     entries.push(MethodIndexEntry { raw_low, raw_high });
                 }
                 entries
@@ -241,7 +241,8 @@ impl BinaryAbcFile {
             }
         }
         methods.sort_by_key(|item| item.offset);
-        Ok(BinaryAbcFile {
+
+        let mut file = BinaryAbcFile {
             header,
             class_offsets,
             classes,
@@ -251,8 +252,13 @@ impl BinaryAbcFile {
             record_offsets: vec![],
             method_index,
             methods,
+            string_table: Vec::new(),
             data,
-        })
+        };
+
+        file.string_table = file.collect_string_entries();
+
+        Ok(file)
     }
     /// Converts the binary representation into the existing high level [`ArkBytecodeFile`]
     /// structure. The translation currently focuses on recreating class declarations and
@@ -342,6 +348,19 @@ impl BinaryAbcFile {
     pub fn to_abc_file(&self) -> AbcFile {
         let mut file = AbcFile::default();
         file.language = Some("ArkTS (binary preview)".to_owned());
+        let base_constant_pool = {
+            let mut pool = ConstantPool::default();
+            pool.strings = self
+                .string_table
+                .iter()
+                .enumerate()
+                .map(|(index, entry)| StringRecord {
+                    id: StringId::new(index as u32),
+                    value: entry.value.clone(),
+                })
+                .collect();
+            pool
+        };
         file.segments.push(AbcSegment::Raw(format!(
             "# generated from binary module ({} classes, {} literal arrays)",
             self.classes.len(),
@@ -463,10 +482,7 @@ impl BinaryAbcFile {
                 // Look up the code offset from the method index or index_data
                 let code_offset = match self.get_code_offset_for_method(item, &method_code_map) {
                     Some(offset) => {
-                        debug_log.push_str(&format!(
-                            "  Resolved code offset 0x{:04x}\n",
-                            offset
-                        ));
+                        debug_log.push_str(&format!("  Resolved code offset 0x{:04x}\n", offset));
                         offset
                     }
                     None => {
@@ -535,7 +551,7 @@ impl BinaryAbcFile {
             // For binary ABC files, we may not have a full constant pool,
             // so we'll create a simple one. The function formatter will work
             // with what it has.
-            let temp_constant_pool = ConstantPool::default();
+            let temp_constant_pool = base_constant_pool.clone();
 
             // Now that all functions are successfully decoded, add them to the file
             for (item, qualified_name, _param_str, decoded_function) in decoded_functions {
@@ -621,50 +637,6 @@ impl BinaryAbcFile {
     /// Extracts and adds a string table dump to the ABC file output.
     /// Scans the index section for string entries and formats them to match the official output.
     fn add_string_table_dump(&self, file: &mut AbcFile) {
-        // Collect all string values from various sources
-        let mut all_strings: Vec<(u32, String)> = Vec::new();
-
-        // Add strings from literal arrays
-        for maybe_array in &self.literal_arrays {
-            if let Some(array) = maybe_array {
-                for entry in &array.entries {
-                    if let crate::abc_literals::LiteralValue::String(offset) = entry.value {
-                        if let Some(string_entry) = self.read_string_at(offset) {
-                            all_strings.push((offset, string_entry.value));
-                        }
-                    }
-                }
-            }
-        }
-
-        // Scan the index section properly for string table entries
-        // The string table is stored as a sequence of MUTF-8 encoded strings
-        let scan_start = 0x8da;
-        let scan_end = 0x2ed4;
-        let mut scan_cursor = scan_start as usize;
-
-        while scan_cursor < scan_end {
-            if let Some((string_entry, entry_size)) = self.read_string_with_size(scan_cursor as u32)
-            {
-                // Only include non-empty, non-control-character strings
-                if !string_entry.value.is_empty()
-                    && !string_entry.value.chars().all(|c| c.is_control())
-                    && scan_cursor >= 0x8da
-                {
-                    all_strings.push((scan_cursor as u32, string_entry.value));
-                }
-                // Jump ahead by the actual size of this string entry
-                scan_cursor = scan_cursor.saturating_add(entry_size as usize);
-            } else {
-                // If we can't read a string here, move forward by 1 byte
-                scan_cursor += 1;
-            }
-        }
-
-        // Deduplicate by offset
-        all_strings.sort_by_key(|(offset, _)| *offset);
-        all_strings.dedup_by_key(|(offset, _)| *offset);
-
         // Add header
         file.segments.push(AbcSegment::Raw(String::new()));
         file.segments
@@ -674,19 +646,20 @@ impl BinaryAbcFile {
             .push(AbcSegment::Raw("# ===================".to_owned()));
 
         // Add each string with official format, filtered to match official range
-        for (offset, value) in all_strings {
+        for entry in &self.string_table {
+            let offset = entry.offset;
             // Filter to official range: 0x8da to 0x136c
             if offset < 0x8da || offset > 0x136c {
                 continue;
             }
 
             // Filter out internal compiler-generated names
-            if value.starts_with('&') && value.contains("#~@") {
+            if entry.value.starts_with('&') && entry.value.contains("#~@") {
                 continue;
             }
 
             // Format: [offset:0x..., name_value:...] - match official format
-            let line = format!("[offset:0x{:x}, name_value:{}]", offset, value);
+            let line = format!("[offset:0x{:x}, name_value:{}]", offset, entry.value);
             file.segments.push(AbcSegment::Raw(line));
         }
     }
@@ -730,6 +703,47 @@ impl BinaryAbcFile {
         let mut reader = AbcReader::new(&self.data);
         AbcStringEntry::read_at(&mut reader, offset).ok()
     }
+
+    fn collect_string_entries(&self) -> Vec<AbcStringEntry> {
+        let mut entries = Vec::new();
+        let mut seen_offsets = HashSet::new();
+
+        let push_entry =
+            |entry: AbcStringEntry, entries: &mut Vec<AbcStringEntry>, seen: &mut HashSet<u32>| {
+                if should_keep_string(&entry.value) && seen.insert(entry.offset) {
+                    entries.push(entry);
+                }
+            };
+
+        for maybe_array in &self.literal_arrays {
+            if let Some(array) = maybe_array {
+                for entry in &array.entries {
+                    if let LiteralValue::String(offset) = entry.value {
+                        if let Some(string_entry) = self.read_string_at(offset) {
+                            push_entry(string_entry, &mut entries, &mut seen_offsets);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fallback scan over the known string table region observed in current builds.
+        let scan_start = 0x8dausize;
+        let scan_end = 0x2ed4usize;
+        let mut cursor = scan_start.min(self.data.len());
+
+        while cursor < scan_end.min(self.data.len()) {
+            if let Some((entry, size)) = self.read_string_with_size(cursor as u32) {
+                push_entry(entry, &mut entries, &mut seen_offsets);
+                cursor = cursor.saturating_add(size as usize);
+            } else {
+                cursor += 1;
+            }
+        }
+
+        entries.sort_by_key(|entry| entry.offset);
+        entries
+    }
     fn resolve_string(&self, offset: u32) -> Option<String> {
         if offset == 0 || (offset as usize) >= self.data.len() {
             return None;
@@ -739,6 +753,7 @@ impl BinaryAbcFile {
             .ok()
             .map(|entry| entry.value)
     }
+
     fn should_render_literal(&self, entries: &[LiteralArrayEntry]) -> bool {
         entries.iter().any(|entry| {
             !matches!(
@@ -1422,6 +1437,10 @@ impl BinaryAbcFile {
 fn simple_class_name(record_name: &str) -> &str {
     let trimmed = record_name.trim_matches('&');
     trimmed.rsplit('.').next().unwrap_or(trimmed)
+}
+
+fn should_keep_string(value: &str) -> bool {
+    !value.is_empty() && !value.chars().all(|c| c.is_control())
 }
 
 #[derive(Debug, Clone)]

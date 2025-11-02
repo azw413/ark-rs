@@ -67,7 +67,7 @@ fn format_operands(operands: &[Operand], pool: &ConstantPool) -> Vec<String> {
         .map(|operand| match operand {
             Operand::Register(register) => format_register_operand(*register),
             Operand::Immediate(immediate) => format_immediate_operand(*immediate),
-            Operand::Identifier(identifier) => format_identifier_operand(*identifier),
+            Operand::Identifier(identifier) => format_identifier_operand(*identifier, pool),
             Operand::String(id) => resolve_string(pool, *id)
                 .map(escape_string)
                 .unwrap_or_else(|| escape_string(&missing_string(*id))),
@@ -109,9 +109,16 @@ fn format_immediate_operand(immediate: ImmediateOperand) -> String {
     }
 }
 
-fn format_identifier_operand(identifier: IdentifierOperand) -> String {
+fn format_identifier_operand(identifier: IdentifierOperand, pool: &ConstantPool) -> String {
     match identifier {
-        IdentifierOperand::Id16(id) => format!("@0x{:x}", id),
+        IdentifierOperand::Id16(id) => {
+            let string_id = StringId(id as u32);
+            if let Some(value) = resolve_string(pool, string_id) {
+                escape_string(value)
+            } else {
+                format!("@0x{:x}", id)
+            }
+        }
     }
 }
 
@@ -659,5 +666,18 @@ mod tests {
             let rendered = format_operands(&operands, &pool).join(", ");
             assert_eq!(rendered, expected, "format {:?}", format);
         }
+    }
+
+    #[test]
+    fn identifier_operands_use_pool_strings() {
+        let mut pool = ConstantPool::default();
+        pool.strings.push(StringRecord {
+            id: StringId::new(0),
+            value: "hello".to_owned(),
+        });
+
+        let rendered = format_operands(&[Operand::Identifier(IdentifierOperand::Id16(0))], &pool);
+
+        assert_eq!(rendered, vec!["\"hello\"".to_owned()]);
     }
 }
