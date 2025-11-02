@@ -601,6 +601,7 @@ impl BinaryAbcFile {
                     canonical_text: String::new(),
                     parsed: Some(function),
                     parse_error: None,
+                    pool: Some(temp_constant_pool.clone()),
                 };
 
                 // Add to file's functions and create segment reference

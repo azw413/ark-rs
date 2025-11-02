@@ -1,6 +1,8 @@
 //! Function bodies, metadata, and control flow constructs.
 
 use crate::attributes::DebugInfo;
+use crate::constant_pool::ConstantPool;
+use crate::disassembly::format_function;
 use crate::instructions::{Instruction, InstructionIndex};
 use crate::types::{FieldType, FunctionId, FunctionSignature, StringId, TypeId};
 
@@ -122,5 +124,61 @@ impl Function {
             exception_handlers: Vec::new(),
             debug_info: None,
         }
+    }
+
+    pub fn to_string(&self, annotations: &[String], pool: &ConstantPool) -> String {
+        let mut output = String::new();
+        for annotation in annotations {
+            output.push_str(annotation);
+            if !annotation.ends_with('\n') {
+                output.push('\n');
+            }
+        }
+
+        let formatted = match format_function(self, pool) {
+            Ok(text) => text,
+            Err(err) => format!("# Failed to format function: {err}"),
+        };
+
+        let lines: Vec<String> = formatted.lines().map(|line| line.to_owned()).collect();
+        let mut normalized = Vec::with_capacity(lines.len());
+        let mut index = 0usize;
+        while index < lines.len() {
+            let line = &lines[index];
+            if line.trim().is_empty() {
+                if matches!(lines.get(index + 1), Some(next) if next.trim() == "}") {
+                    index += 1;
+                    continue;
+                }
+            }
+
+            let mut space_count = 0usize;
+            for ch in line.chars() {
+                if ch == ' ' {
+                    space_count += 1;
+                } else {
+                    break;
+                }
+            }
+            let tabs = space_count / 4;
+            let spaces = space_count % 4;
+            let mut rebuilt = String::new();
+            if tabs > 0 {
+                rebuilt.push_str(&"\t".repeat(tabs));
+            }
+            if spaces > 0 {
+                rebuilt.push_str(&" ".repeat(spaces));
+            }
+            rebuilt.push_str(&line[space_count..]);
+            normalized.push(rebuilt);
+            index += 1;
+        }
+
+        if !normalized.is_empty() && !normalized.last().unwrap().is_empty() {
+            normalized.push(String::new());
+        }
+
+        output.push_str(&normalized.join("\n"));
+        output
     }
 }

@@ -36,6 +36,7 @@ pub struct FunctionEntry {
     pub canonical_text: String,
     pub parsed: Option<Function>,
     pub parse_error: Option<FunctionParseError>,
+    pub pool: Option<ConstantPool>,
 }
 
 #[derive(Debug, Clone)]
@@ -93,7 +94,15 @@ pub fn parse_abc_file(input: &str) -> Result<AbcFile, AbcParseError> {
 
         if trimmed.ends_with(':') {
             pending_annotations.push(line.to_owned());
-            file.segments.push(AbcSegment::Raw(line.to_owned()));
+            index += 1;
+            continue;
+        }
+
+        if !pending_annotations.is_empty()
+            && (line.starts_with('\t') || line.starts_with(' '))
+            && !trimmed.starts_with(".function ")
+        {
+            pending_annotations.push(line.to_owned());
             index += 1;
             continue;
         }
@@ -116,6 +125,11 @@ pub fn parse_abc_file(input: &str) -> Result<AbcFile, AbcParseError> {
                 }
                 Err(err) => (None, normalized.clone(), Some(err)),
             };
+            let pool_snapshot = if parsed.is_some() {
+                Some(pool)
+            } else {
+                None
+            };
 
             file.functions.push(FunctionEntry {
                 annotations: pending_annotations.clone(),
@@ -123,6 +137,7 @@ pub fn parse_abc_file(input: &str) -> Result<AbcFile, AbcParseError> {
                 canonical_text,
                 parsed,
                 parse_error,
+                pool: pool_snapshot,
             });
             pending_annotations.clear();
             let fn_index = file.functions.len() - 1;
@@ -246,9 +261,36 @@ impl AbcFile {
                 }
                 AbcSegment::Function(idx) => {
                     if let Some(entry) = self.functions.get(*idx) {
-                        output.push_str(&entry.raw_text);
-                        if !entry.raw_text.ends_with('\n') {
-                            output.push('\n');
+                        if let (Some(function), Some(pool)) = (&entry.parsed, entry.pool.as_ref()) {
+                            if entry.raw_text.is_empty() {
+                                let text = function.to_string(&entry.annotations, pool);
+                                output.push_str(&text);
+                                if !text.ends_with('\n') {
+                                    output.push('\n');
+                                }
+                                continue;
+                            }
+                        }
+
+                        if entry.raw_text.is_empty() {
+                            if let (Some(function), Some(pool)) = (&entry.parsed, entry.pool.as_ref()) {
+                                let text = function.to_string(&entry.annotations, pool);
+                                output.push_str(&text);
+                                if !text.ends_with('\n') {
+                                    output.push('\n');
+                                }
+                            }
+                        } else {
+                            for annotation in &entry.annotations {
+                                output.push_str(annotation);
+                                if !annotation.ends_with('\n') {
+                                    output.push('\n');
+                                }
+                            }
+                            output.push_str(&entry.raw_text);
+                            if !entry.raw_text.ends_with('\n') {
+                                output.push('\n');
+                            }
                         }
                     }
                 }
