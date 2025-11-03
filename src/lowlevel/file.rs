@@ -1,11 +1,11 @@
 //! Top-level representation of an Ark bytecode artifact.
 
-use crate::attributes::Attribute;
-use crate::classes::ClassDefinition;
-use crate::constant_pool::ConstantPool;
-use crate::functions::Function;
-use crate::header::FileHeader;
-use crate::types::StringId;
+use super::constant_pool::ConstantPool;
+use super::header::FileHeader;
+use super::types::StringId;
+use crate::highlevel::attributes::Attribute;
+use crate::highlevel::classes::ClassDefinition;
+use crate::highlevel::functions::Function;
 
 /// Stores the offsets and sizes of bytecode sections in the binary file.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

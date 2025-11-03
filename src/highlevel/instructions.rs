@@ -2,8 +2,8 @@
 
 use std::borrow::Cow;
 
-use crate::isa_generated::INSTRUCTION_TABLE;
-use crate::types::{FieldId, FunctionId, StringId, TypeDescriptor, TypeId};
+use crate::lowlevel::isa_generated::INSTRUCTION_TABLE;
+use crate::lowlevel::{FieldId, FunctionId, TypeDescriptor, TypeId};
 
 /// Zero-based instruction index within a function body.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -113,7 +113,7 @@ pub enum Operand {
     Register(RegisterOperand),
     Immediate(ImmediateOperand),
     Identifier(IdentifierOperand),
-    String(StringId),
+    String(String),
     Type(TypeDescriptor),
     TypeId(TypeId),
     Field(FieldId),

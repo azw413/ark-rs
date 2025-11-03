@@ -1,21 +1,22 @@
-use crate::abc::{AbcFile, AbcSegment, FunctionEntry, LiteralEntry, RecordEntry};
-use crate::abc_bytecode::{DecodedFunction, decode_function_body_with_resolver};
-use crate::abc_literals::{LiteralArray, LiteralEntry as LiteralArrayEntry, LiteralValue};
-use crate::abc_types::{
+use super::bytecode::{DecodedFunction, decode_function_body_with_resolver};
+use super::constant_pool::{ConstantPool, StringRecord};
+use super::file::{ArkBytecodeFile, SectionOffsets};
+use super::header::{Endianness, FileFlags, FileHeader, FileVersion, ModuleKind};
+use super::literals::{LiteralArray, LiteralEntry as LiteralArrayEntry, LiteralValue};
+use super::metadata::{
     AbcClassDefinition, AbcHeader, AbcIndexHeader, AbcMethodItem, AbcReader, AbcStringEntry,
 };
-use crate::classes::{ClassDefinition, ClassFlag};
-use crate::constant_pool::{ConstantPool, StringRecord};
-use crate::disassembly::format_function;
+use super::types::{FunctionId, StringId, TypeId};
 use crate::error::{ArkError, ArkResult};
-use crate::file::{ArkBytecodeFile, SectionOffsets};
-use crate::functions::{Function, FunctionKind};
-use crate::header::{Endianness, FileFlags, FileHeader, FileVersion, ModuleKind};
-use crate::types::{FieldType, FunctionId, FunctionSignature, StringId, TypeDescriptor, TypeId};
+use crate::highlevel::classes::{ClassDefinition, ClassFlag};
+use crate::highlevel::disassembly::format_function;
+use crate::highlevel::functions::{Function, FunctionFlag, FunctionKind, FunctionSignature};
+use crate::highlevel::module::{ArkModule, ArkSegment, FunctionEntry, LiteralEntry, RecordEntry};
 use std::collections::{HashMap, HashSet};
 /// In-memory representation of a decoded binary ABC module focusing on class metadata.
+/// Low-level view of a binary Ark `.abc` file including headers, indices, string table, and raw sections.
 #[derive(Debug, Clone)]
-pub struct BinaryAbcFile {
+pub struct AbcFile {
     pub header: AbcHeader,
     pub class_offsets: Vec<u32>,
     pub classes: Vec<AbcClassDefinition>,
@@ -33,8 +34,8 @@ pub struct MethodIndexEntry {
     pub raw_low: u32,
     pub raw_high: u32,
 }
-impl BinaryAbcFile {
-    /// Parses a raw `.abc` binary buffer into a [`BinaryAbcFile`].
+impl AbcFile {
+    /// Parses a raw `.abc` binary buffer into a [`AbcFile`].
     pub fn parse(bytes: &[u8]) -> ArkResult<Self> {
         let data = bytes.to_vec();
         let mut reader = AbcReader::new(&data);
@@ -242,7 +243,7 @@ impl BinaryAbcFile {
         }
         methods.sort_by_key(|item| item.offset);
 
-        let mut file = BinaryAbcFile {
+        let mut file = AbcFile {
             header,
             class_offsets,
             classes,
@@ -263,6 +264,8 @@ impl BinaryAbcFile {
     /// Converts the binary representation into the existing high level [`ArkBytecodeFile`]
     /// structure. The translation currently focuses on recreating class declarations and
     /// populating the constant pool with their descriptors.
+    /// Converts the binary representation into the legacy [`ArkBytecodeFile`] structure.
+    /// This is primarily for backwards compatibility while higher-level APIs mature.
     pub fn to_ark_file(&self) -> ArkBytecodeFile {
         let mut header = FileHeader::default();
         header.magic = FileHeader::MAGIC;
@@ -286,8 +289,7 @@ impl BinaryAbcFile {
             id: StringId::new(0),
             value: language_string.clone(),
         });
-        string_ids.insert(language_string, StringId::new(0));
-        let mut type_descriptors: Vec<TypeDescriptor> = Vec::new();
+        string_ids.insert(language_string.clone(), StringId::new(0));
         let mut classes: Vec<ClassDefinition> = Vec::new();
         for class in &self.classes {
             string_ids
@@ -300,11 +302,9 @@ impl BinaryAbcFile {
                     });
                     id
                 });
-            let type_id = TypeId::new(type_descriptors.len() as u32);
-            type_descriptors.push(TypeDescriptor::Unknown(class.offset));
             classes.push(ClassDefinition {
-                name: type_id,
-                language: StringId::new(0),
+                name: class.name.value.clone(),
+                language: language_string.clone(),
                 super_class: None,
                 interfaces: Vec::new(),
                 flags: ClassFlag::NONE,
@@ -316,7 +316,6 @@ impl BinaryAbcFile {
             });
         }
         constant_pool.strings = string_records;
-        constant_pool.types = type_descriptors;
         constant_pool.literals = self
             .literal_arrays
             .iter()
@@ -324,7 +323,7 @@ impl BinaryAbcFile {
             .filter_map(|(index, maybe_array)| {
                 maybe_array
                     .as_ref()
-                    .map(|array| crate::constant_pool::LiteralArray {
+                    .map(|array| super::constant_pool::LiteralArray {
                         id: index as u32,
                         values: array.entries.iter().map(convert_literal_value).collect(),
                     })
@@ -340,13 +339,14 @@ impl BinaryAbcFile {
             sections: SectionOffsets::default(),
         }
     }
-    /// Returns a best-effort textual [`AbcFile`] representation of this binary module.
+    /// Returns a best-effort textual [`ArkModule`] representation of this binary module.
     ///
     /// The result is intentionally lossy while we continue to reverse engineer the
     /// binary format, but it allows the existing textual tooling to render
-    /// intermediate progress via [`AbcFile::to_string`].
-    pub fn to_abc_file(&self) -> AbcFile {
-        let mut file = AbcFile::default();
+    /// intermediate progress via [`ArkModule::to_string`].
+    /// Produces a best-effort [`ArkModule`] by decoding available metadata and function bodies.
+    pub fn to_ark_module(&self) -> ArkModule {
+        let mut file = ArkModule::default();
         file.language = Some("ArkTS (binary preview)".to_owned());
         let base_constant_pool = {
             let mut pool = ConstantPool::default();
@@ -361,17 +361,17 @@ impl BinaryAbcFile {
                 .collect();
             pool
         };
-        file.segments.push(AbcSegment::Raw(format!(
+        file.segments.push(ArkSegment::Raw(format!(
             "# generated from binary module ({} classes, {} literal arrays)",
             self.classes.len(),
             self.literal_offsets.len()
         )));
-        file.segments.push(AbcSegment::Raw(String::new()));
+        file.segments.push(ArkSegment::Raw(String::new()));
         file.segments
-            .push(AbcSegment::Raw("# ===================".to_owned()));
-        file.segments.push(AbcSegment::Raw("# LITERALS".to_owned()));
+            .push(ArkSegment::Raw("# ===================".to_owned()));
+        file.segments.push(ArkSegment::Raw("# LITERALS".to_owned()));
         file.segments
-            .push(AbcSegment::Raw("# ===================".to_owned()));
+            .push(ArkSegment::Raw("# ===================".to_owned()));
         let mut display_index = 0usize;
         for (offset, entry) in self.literal_offsets.iter().zip(self.literal_arrays.iter()) {
             let (body, lines) = match entry {
@@ -410,17 +410,17 @@ impl BinaryAbcFile {
                 lines,
             });
             let lit_idx = file.literals.len() - 1;
-            file.segments.push(AbcSegment::Literal(lit_idx));
-            file.segments.push(AbcSegment::Raw(String::new()));
+            file.segments.push(ArkSegment::Literal(lit_idx));
+            file.segments.push(ArkSegment::Raw(String::new()));
             display_index += 1;
         }
-        file.segments.push(AbcSegment::Raw(String::new()));
+        file.segments.push(ArkSegment::Raw(String::new()));
         file.segments
-            .push(AbcSegment::Raw("# ===================".to_owned()));
+            .push(ArkSegment::Raw("# ===================".to_owned()));
         file.segments
-            .push(AbcSegment::Raw("# RECORDS (binary)".to_owned()));
+            .push(ArkSegment::Raw("# RECORDS (binary)".to_owned()));
         file.segments
-            .push(AbcSegment::Raw("# ===================".to_owned()));
+            .push(ArkSegment::Raw("# ===================".to_owned()));
         for class in &self.classes {
             let record_name = normalize_record_name(&class.name.value);
             let mut lines = Vec::new();
@@ -436,16 +436,16 @@ impl BinaryAbcFile {
                 lines: lines.clone(),
             });
             let rec_idx = file.records.len() - 1;
-            file.segments.push(AbcSegment::Record(rec_idx));
-            file.segments.push(AbcSegment::Raw(String::new()));
+            file.segments.push(ArkSegment::Record(rec_idx));
+            file.segments.push(ArkSegment::Raw(String::new()));
         }
         if !self.method_index.is_empty() {
             file.segments
-                .push(AbcSegment::Raw("# ===================".to_owned()));
+                .push(ArkSegment::Raw("# ===================".to_owned()));
             file.segments
-                .push(AbcSegment::Raw("# FUNCTIONS (binary)".to_owned()));
+                .push(ArkSegment::Raw("# FUNCTIONS (binary)".to_owned()));
             file.segments
-                .push(AbcSegment::Raw("# ===================".to_owned()));
+                .push(ArkSegment::Raw("# ===================".to_owned()));
 
             // First, decode all functions and collect them
             // Skip functions that fail to decode
@@ -559,22 +559,23 @@ impl BinaryAbcFile {
                 self.render_method_annotations(item, &mut file.segments);
 
                 // Convert DecodedFunction to Function
-                let function = Function {
-                    id: decoded_function.id,
-                    name: decoded_function.name,
-                    signature: decoded_function.signature,
-                    kind: FunctionKind::TopLevel,
-                    flags: Default::default(),
-                    register_count: decoded_function.register_count,
-                    parameters: decoded_function.parameters,
-                    locals: decoded_function.locals,
-                    instruction_block: decoded_function.instruction_block,
-                    exception_handlers: decoded_function.exception_handlers,
-                    debug_info: None,
-                };
+                let mut function = Function::new(decoded_function.id, decoded_function.signature);
+                function.name = decoded_function
+                    .name
+                    .and_then(|id| resolve_constant_string(&temp_constant_pool, id));
+                if function.name.is_none() {
+                    function.name = Some(qualified_name.clone());
+                }
+                function.kind = FunctionKind::TopLevel;
+                function.flags = FunctionFlag::NONE;
+                function.register_count = decoded_function.register_count;
+                function.parameters = decoded_function.parameters;
+                function.locals = decoded_function.locals;
+                function.instruction_block = decoded_function.instruction_block;
+                function.exception_handlers = decoded_function.exception_handlers;
 
                 // Format the function into text representation
-                let formatted_body = match format_function(&function, &temp_constant_pool) {
+                let formatted_body = match format_function(&function) {
                     Ok(text) => text,
                     Err(e) => {
                         debug_log.push_str(&format!(
@@ -617,14 +618,13 @@ impl BinaryAbcFile {
                     canonical_text: String::new(),
                     parsed: Some(function),
                     parse_error: None,
-                    pool: Some(temp_constant_pool.clone()),
                 };
 
                 // Add to file's functions and create segment reference
                 let function_index = file.functions.len();
                 file.functions.push(function_entry);
-                file.segments.push(AbcSegment::Function(function_index));
-                file.segments.push(AbcSegment::Raw(String::new()));
+                file.segments.push(ArkSegment::Function(function_index));
+                file.segments.push(ArkSegment::Raw(String::new()));
             }
         }
 
@@ -636,14 +636,14 @@ impl BinaryAbcFile {
 
     /// Extracts and adds a string table dump to the ABC file output.
     /// Scans the index section for string entries and formats them to match the official output.
-    fn add_string_table_dump(&self, file: &mut AbcFile) {
+    fn add_string_table_dump(&self, file: &mut ArkModule) {
         // Add header
-        file.segments.push(AbcSegment::Raw(String::new()));
+        file.segments.push(ArkSegment::Raw(String::new()));
         file.segments
-            .push(AbcSegment::Raw("# ===================".to_owned()));
-        file.segments.push(AbcSegment::Raw("# STRING".to_owned()));
+            .push(ArkSegment::Raw("# ===================".to_owned()));
+        file.segments.push(ArkSegment::Raw("# STRING".to_owned()));
         file.segments
-            .push(AbcSegment::Raw("# ===================".to_owned()));
+            .push(ArkSegment::Raw("# ===================".to_owned()));
 
         // Add each string with official format, filtered to match official range
         for entry in &self.string_table {
@@ -660,7 +660,7 @@ impl BinaryAbcFile {
 
             // Format: [offset:0x..., name_value:...] - match official format
             let line = format!("[offset:0x{:x}, name_value:{}]", offset, entry.value);
-            file.segments.push(AbcSegment::Raw(line));
+            file.segments.push(ArkSegment::Raw(line));
         }
     }
 
@@ -1148,7 +1148,7 @@ impl BinaryAbcFile {
         }
     }
 
-    fn render_method_annotations(&self, method: &AbcMethodItem, segments: &mut Vec<AbcSegment>) {
+    fn render_method_annotations(&self, method: &AbcMethodItem, segments: &mut Vec<ArkSegment>) {
         // Render method tags as annotations
         let mut found_slot_annotation = false;
         let mut slot_number = 0x0;
@@ -1161,18 +1161,18 @@ impl BinaryAbcFile {
                     // Value format: 0xSSSS0000 where SSSS is the slot number
                     0x16 => {
                         slot_number = (tag.value >> 16) & 0xFFFF;
-                        segments.push(AbcSegment::Raw("L_ESSlotNumberAnnotation:".to_owned()));
-                        segments.push(AbcSegment::Raw(format!(
+                        segments.push(ArkSegment::Raw("L_ESSlotNumberAnnotation:".to_owned()));
+                        segments.push(ArkSegment::Raw(format!(
                             "\tu32 slotNumberIdx {{ 0x{:x} }}",
                             slot_number
                         )));
-                        segments.push(AbcSegment::Raw(String::new()));
+                        segments.push(ArkSegment::Raw(String::new()));
                         found_slot_annotation = true;
                     }
                     // MethodTag from spec: DEBUG_INFO
                     // Tag 0x05: u32 offset → DebugInfoItem
                     0x05 => {
-                        segments.push(AbcSegment::Raw(format!(
+                        segments.push(ArkSegment::Raw(format!(
                             "\t# DEBUG_INFO: debug info at offset 0x{:x}",
                             tag.value
                         )));
@@ -1180,7 +1180,7 @@ impl BinaryAbcFile {
                     // MethodTag from spec: ANNOTATION
                     // Tag 0x06: u32 offset (repeatable) → Annotation
                     0x06 => {
-                        segments.push(AbcSegment::Raw(format!(
+                        segments.push(ArkSegment::Raw(format!(
                             "\t# ANNOTATION: annotation at offset 0x{:x}",
                             tag.value
                         )));
@@ -1199,7 +1199,7 @@ impl BinaryAbcFile {
                     }
                     // Unknown tag - render as comment for debugging
                     _ => {
-                        segments.push(AbcSegment::Raw(format!(
+                        segments.push(ArkSegment::Raw(format!(
                             "\t# Unknown method tag: 0x{:02x} = 0x{:x}",
                             tag.id, tag.value
                         )));
@@ -1211,17 +1211,17 @@ impl BinaryAbcFile {
         // If we found slot numbers from other tags, show L_ESSlotNumberAnnotation
         if found_slot_annotation || slot_number > 0 {
             // Use the slot number from tag 0x16 or computed from other tags
-            segments.insert(0, AbcSegment::Raw("L_ESSlotNumberAnnotation:".to_owned()));
+            segments.insert(0, ArkSegment::Raw("L_ESSlotNumberAnnotation:".to_owned()));
             segments.insert(
                 1,
-                AbcSegment::Raw(format!("\tu32 slotNumberIdx {{ 0x{:x} }}", slot_number)),
+                ArkSegment::Raw(format!("\tu32 slotNumberIdx {{ 0x{:x} }}", slot_number)),
             );
-            segments.insert(2, AbcSegment::Raw(String::new()));
+            segments.insert(2, ArkSegment::Raw(String::new()));
         } else {
             // Default slot number for methods without explicit annotations
-            segments.push(AbcSegment::Raw("L_ESSlotNumberAnnotation:".to_owned()));
-            segments.push(AbcSegment::Raw(format!("\tu32 slotNumberIdx {{ 0x0 }}")));
-            segments.push(AbcSegment::Raw(String::new()));
+            segments.push(ArkSegment::Raw("L_ESSlotNumberAnnotation:".to_owned()));
+            segments.push(ArkSegment::Raw(format!("\tu32 slotNumberIdx {{ 0x0 }}")));
+            segments.push(ArkSegment::Raw(String::new()));
         }
     }
 
@@ -1414,22 +1414,25 @@ impl BinaryAbcFile {
         function_id: FunctionId,
         name: Option<StringId>,
     ) -> ArkResult<DecodedFunction> {
-        let return_type =
-            FieldType::new(TypeDescriptor::Primitive(crate::types::PrimitiveType::Any));
-        let signature = FunctionSignature::new(Vec::new(), return_type);
+        let signature = FunctionSignature::new("any");
 
         // Note: String ID resolution would require a proper string index table.
         // For now, we keep ID16 values as-is (they display as @0xXXXX).
         // The core bytecode is now correctly decoded!
 
         let data = self.data.clone();
+        let string_resolver = |index: u32| {
+            self.string_table
+                .get(index as usize)
+                .map(|entry| entry.value.clone())
+        };
         decode_function_body_with_resolver(
             &data,
             code_offset,
             function_id,
             name,
             signature,
-            None::<fn(u32) -> Option<String>>,
+            Some(string_resolver),
         )
     }
 }
@@ -1441,6 +1444,13 @@ fn simple_class_name(record_name: &str) -> &str {
 
 fn should_keep_string(value: &str) -> bool {
     !value.is_empty() && !value.chars().all(|c| c.is_control())
+}
+
+fn resolve_constant_string(pool: &ConstantPool, id: StringId) -> Option<String> {
+    pool.strings
+        .iter()
+        .find(|record| record.id == id)
+        .map(|record| record.value.clone())
 }
 
 #[derive(Debug, Clone)]
@@ -1491,57 +1501,57 @@ fn process_literal_queue(
     }
 }
 
-fn convert_literal_value(value: &LiteralArrayEntry) -> crate::constant_pool::LiteralValue {
+fn convert_literal_value(value: &LiteralArrayEntry) -> super::constant_pool::LiteralValue {
     match &value.value {
-        LiteralValue::Boolean(v) => crate::constant_pool::LiteralValue::Boolean(*v),
-        LiteralValue::Integer(v) => crate::constant_pool::LiteralValue::Integer(*v),
-        LiteralValue::Float(v) => crate::constant_pool::LiteralValue::Float(*v),
-        LiteralValue::Double(v) => crate::constant_pool::LiteralValue::Double(*v),
+        LiteralValue::Boolean(v) => super::constant_pool::LiteralValue::Boolean(*v),
+        LiteralValue::Integer(v) => super::constant_pool::LiteralValue::Integer(*v),
+        LiteralValue::Float(v) => super::constant_pool::LiteralValue::Float(*v),
+        LiteralValue::Double(v) => super::constant_pool::LiteralValue::Double(*v),
         LiteralValue::String(index) => {
-            crate::constant_pool::LiteralValue::String(StringId::new(*index))
+            super::constant_pool::LiteralValue::String(StringId::new(*index))
         }
-        LiteralValue::Type(index) => crate::constant_pool::LiteralValue::Type(TypeId::new(*index)),
+        LiteralValue::Type(index) => super::constant_pool::LiteralValue::Type(TypeId::new(*index)),
         LiteralValue::Method(index)
         | LiteralValue::GeneratorMethod(index)
         | LiteralValue::AsyncGeneratorMethod(index)
         | LiteralValue::Getter(index)
         | LiteralValue::Setter(index) => {
-            crate::constant_pool::LiteralValue::Method(FunctionId::new(*index))
+            super::constant_pool::LiteralValue::Method(FunctionId::new(*index))
         }
         LiteralValue::MethodAffiliate(idx) => {
-            crate::constant_pool::LiteralValue::MethodAffiliate(*idx)
+            super::constant_pool::LiteralValue::MethodAffiliate(*idx)
         }
         LiteralValue::Builtin(code) | LiteralValue::BuiltinTypeIndex(code) => {
-            crate::constant_pool::LiteralValue::Builtin(*code)
+            super::constant_pool::LiteralValue::Builtin(*code)
         }
-        LiteralValue::Accessor(code) => crate::constant_pool::LiteralValue::Accessor(*code),
+        LiteralValue::Accessor(code) => super::constant_pool::LiteralValue::Accessor(*code),
         LiteralValue::LiteralArray(index) | LiteralValue::LiteralBufferIndex(index) => {
-            crate::constant_pool::LiteralValue::LiteralArray(*index)
+            super::constant_pool::LiteralValue::LiteralArray(*index)
         }
-        LiteralValue::BigInt(bytes) => crate::constant_pool::LiteralValue::BigInt(bytes.clone()),
+        LiteralValue::BigInt(bytes) => super::constant_pool::LiteralValue::BigInt(bytes.clone()),
         LiteralValue::BigIntExternal { length } => {
-            crate::constant_pool::LiteralValue::BigIntExternal { length: *length }
+            super::constant_pool::LiteralValue::BigIntExternal { length: *length }
         }
-        LiteralValue::Any { type_index, data } => crate::constant_pool::LiteralValue::Any {
+        LiteralValue::Any { type_index, data } => super::constant_pool::LiteralValue::Any {
             type_index: TypeId::new(*type_index),
             data: data.clone(),
         },
         LiteralValue::AnyExternal { type_index, length } => {
-            crate::constant_pool::LiteralValue::AnyExternal {
+            super::constant_pool::LiteralValue::AnyExternal {
                 type_index: TypeId::new(*type_index),
                 length: *length,
             }
         }
         LiteralValue::EtsImplements(index) => {
-            crate::constant_pool::LiteralValue::String(StringId::new(*index))
+            super::constant_pool::LiteralValue::String(StringId::new(*index))
         }
-        LiteralValue::Null => crate::constant_pool::LiteralValue::Null,
-        LiteralValue::Undefined => crate::constant_pool::LiteralValue::Undefined,
-        LiteralValue::TagValue(tag) => crate::constant_pool::LiteralValue::Raw {
+        LiteralValue::Null => super::constant_pool::LiteralValue::Null,
+        LiteralValue::Undefined => super::constant_pool::LiteralValue::Undefined,
+        LiteralValue::TagValue(tag) => super::constant_pool::LiteralValue::Raw {
             tag: 0x00,
             bytes: vec![*tag],
         },
-        LiteralValue::Raw { tag, bytes } => crate::constant_pool::LiteralValue::Raw {
+        LiteralValue::Raw { tag, bytes } => super::constant_pool::LiteralValue::Raw {
             tag: *tag,
             bytes: bytes.clone(),
         },
@@ -1561,18 +1571,6 @@ fn escape_string(value: &str) -> String {
     escaped
 }
 
-fn escape_string_for_display(value: &str) -> String {
-    // For display in string table - show special chars as dot
-    let mut escaped = String::with_capacity(value.len());
-    for ch in value.chars() {
-        if ch.is_control() || ch == '"' {
-            escaped.push('.');
-        } else {
-            escaped.push(ch);
-        }
-    }
-    escaped
-}
 fn normalize_record_name(raw: &str) -> String {
     if raw.is_empty() {
         return raw.to_owned();
@@ -1602,12 +1600,12 @@ fn normalize_method_name(raw: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::BinaryAbcFile;
-    use crate::abc_literals::LiteralValue;
+    use super::AbcFile;
+    use crate::lowlevel::LiteralValue;
     #[test]
     fn parse_module_classes() {
         let bytes = std::fs::read("test-data/modules.abc").expect("fixture");
-        let abc = BinaryAbcFile::parse(&bytes).expect("parse binary abc");
+        let abc = AbcFile::parse(&bytes).expect("parse binary abc");
         assert_eq!(abc.class_offsets.len(), 13);
         assert!(
             abc.classes
@@ -1618,7 +1616,7 @@ mod tests {
     #[test]
     fn convert_to_high_level_file() {
         let bytes = std::fs::read("test-data/wechat.abc").expect("fixture");
-        let abc = BinaryAbcFile::parse(&bytes).expect("parse binary abc");
+        let abc = AbcFile::parse(&bytes).expect("parse binary abc");
         let ark = abc.to_ark_file();
         assert_eq!(ark.classes.len(), abc.classes.len());
         assert!(ark.constant_pool.strings.len() >= abc.classes.len());
@@ -1632,7 +1630,7 @@ mod tests {
     #[test]
     fn decode_first_literal_array_entries() {
         let bytes = std::fs::read("test-data/wechat.abc").expect("fixture");
-        let abc = BinaryAbcFile::parse(&bytes).expect("parse binary abc");
+        let abc = AbcFile::parse(&bytes).expect("parse binary abc");
         assert!(abc.literal_arrays.iter().any(|entry| entry.is_some()));
         let first = abc
             .literal_arrays
@@ -1662,8 +1660,8 @@ mod tests {
     fn dump_modules_disassembly() {
         use std::path::Path;
         let bytes = std::fs::read("test-data/modules.abc").expect("fixture");
-        let abc = BinaryAbcFile::parse(&bytes).expect("parse binary abc");
-        let textual = abc.to_abc_file();
+        let abc = AbcFile::parse(&bytes).expect("parse binary abc");
+        let textual = abc.to_ark_module();
         let report = textual.to_string();
         assert!(!report.trim().is_empty());
         assert!(report.contains(".record"));

@@ -5,7 +5,7 @@
 //! 2. Validates literal arrays before accepting them
 //! 3. Provides comprehensive unit tests
 
-use crate::abc_types::{AbcReader, AbcStringEntry};
+use super::metadata::{AbcReader, AbcStringEntry};
 use crate::error::{ArkError, ArkResult};
 
 /// Single literal value with its tag
@@ -322,29 +322,13 @@ impl LiteralArray {
 /// Detects literal arrays in a binary ABC file by scanning for valid structures
 pub struct LiteralScanner {
     data: Vec<u8>,
-    string_offsets: std::collections::HashSet<u32>,
 }
 
 impl LiteralScanner {
     /// Creates a new scanner for the given binary data
     pub fn new(data: &[u8]) -> Self {
-        // Pre-scan for valid string offsets (they start with length + null-terminated)
-        let mut string_offsets = std::collections::HashSet::new();
-        for i in 0..(data.len().saturating_sub(4)) {
-            // String entries have a specific pattern: length byte followed by data then null
-            let len_byte = data[i];
-            if len_byte == 0 || len_byte > 100 {
-                continue;
-            }
-            let len = len_byte as usize;
-            if i + 1 + len < data.len() && data[i + 1 + len] == 0 {
-                string_offsets.insert(i as u32);
-            }
-        }
-
         LiteralScanner {
             data: data.to_vec(),
-            string_offsets,
         }
     }
 

@@ -1,19 +1,21 @@
 //! Parsing utilities for Ark disassembly (modules.txt) files.
 
-use crate::constant_pool::ConstantPool;
-use crate::disassembly::format_function;
-use crate::functions::Function;
-use crate::parser::{ParseError as FunctionParseError, normalize_function_text, parse_function};
+use super::disassembly::format_function;
+use super::functions::Function;
+use super::parser::{ParseError as FunctionParseError, normalize_function_text, parse_function};
 
+/// Top-level container representing a textual Ark module (either parsed from
+/// `.txt` or derived from a binary `.abc`).
 #[derive(Debug, Default, Clone)]
-pub struct AbcFile {
+pub struct ArkModule {
     pub language: Option<String>,
     pub literals: Vec<LiteralEntry>,
     pub records: Vec<RecordEntry>,
     pub functions: Vec<FunctionEntry>,
-    pub segments: Vec<AbcSegment>,
+    pub segments: Vec<ArkSegment>,
 }
 
+/// Literals as they appear in the textual format.
 #[derive(Debug, Clone)]
 pub struct LiteralEntry {
     pub index: u32,
@@ -22,6 +24,7 @@ pub struct LiteralEntry {
     pub lines: Vec<String>,
 }
 
+/// Record declarations (e.g. classes) captured from the textual format.
 #[derive(Debug, Clone)]
 pub struct RecordEntry {
     pub name: String,
@@ -29,6 +32,7 @@ pub struct RecordEntry {
     pub lines: Vec<String>,
 }
 
+/// Function blocks within the textual module, including parsed representation when available.
 #[derive(Debug, Clone)]
 pub struct FunctionEntry {
     pub annotations: Vec<String>,
@@ -36,11 +40,11 @@ pub struct FunctionEntry {
     pub canonical_text: String,
     pub parsed: Option<Function>,
     pub parse_error: Option<FunctionParseError>,
-    pub pool: Option<ConstantPool>,
 }
 
+/// Tracks which logical segment produced a given line when round-tripping.
 #[derive(Debug, Clone)]
-pub enum AbcSegment {
+pub enum ArkSegment {
     Raw(String),
     Language(String),
     Literal(usize),
@@ -48,23 +52,25 @@ pub enum AbcSegment {
     Function(usize),
 }
 
+/// Error emitted while parsing a textual Ark module.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AbcParseError {
+pub struct ArkParseError {
     pub line: usize,
     pub message: String,
 }
 
-impl AbcParseError {
+impl ArkParseError {
     fn new(line: usize, message: impl Into<String>) -> Self {
-        AbcParseError {
+        ArkParseError {
             line,
             message: message.into(),
         }
     }
 }
 
-pub fn parse_abc_file(input: &str) -> Result<AbcFile, AbcParseError> {
-    let mut file = AbcFile::default();
+/// Parses a textual Ark disassembly file into an [`ArkModule`].
+pub fn parse_ark_module(input: &str) -> Result<ArkModule, ArkParseError> {
+    let mut file = ArkModule::default();
     let lines: Vec<&str> = input.lines().collect();
     let mut index = 0usize;
     let mut pending_annotations: Vec<String> = Vec::new();
@@ -74,20 +80,20 @@ pub fn parse_abc_file(input: &str) -> Result<AbcFile, AbcParseError> {
         let trimmed = line.trim();
 
         if trimmed.is_empty() {
-            file.segments.push(AbcSegment::Raw(String::new()));
+            file.segments.push(ArkSegment::Raw(String::new()));
             index += 1;
             continue;
         }
 
         if trimmed.starts_with('#') {
-            file.segments.push(AbcSegment::Raw(line.to_owned()));
+            file.segments.push(ArkSegment::Raw(line.to_owned()));
             index += 1;
             continue;
         }
 
         if trimmed.starts_with(".language ") {
             file.language = Some(trimmed[10..].trim().to_owned());
-            file.segments.push(AbcSegment::Language(line.to_owned()));
+            file.segments.push(ArkSegment::Language(line.to_owned()));
             index += 1;
             continue;
         }
@@ -115,17 +121,13 @@ pub fn parse_abc_file(input: &str) -> Result<AbcFile, AbcParseError> {
                 raw_text.push('\n');
             }
             let normalized = normalize_function_text(&raw_text);
-            let mut pool = ConstantPool::default();
-            let (parsed, canonical_text, parse_error) = match parse_function(&normalized, &mut pool)
-            {
+            let (parsed, canonical_text, parse_error) = match parse_function(&normalized) {
                 Ok(func) => {
-                    let formatted =
-                        format_function(&func, &pool).unwrap_or_else(|_| normalized.clone());
+                    let formatted = format_function(&func).unwrap_or_else(|_| normalized.clone());
                     (Some(func), formatted, None)
                 }
                 Err(err) => (None, normalized.clone(), Some(err)),
             };
-            let pool_snapshot = if parsed.is_some() { Some(pool) } else { None };
 
             file.functions.push(FunctionEntry {
                 annotations: pending_annotations.clone(),
@@ -133,11 +135,10 @@ pub fn parse_abc_file(input: &str) -> Result<AbcFile, AbcParseError> {
                 canonical_text,
                 parsed,
                 parse_error,
-                pool: pool_snapshot,
             });
             pending_annotations.clear();
             let fn_index = file.functions.len() - 1;
-            file.segments.push(AbcSegment::Function(fn_index));
+            file.segments.push(ArkSegment::Function(fn_index));
             continue;
         }
 
@@ -145,13 +146,13 @@ pub fn parse_abc_file(input: &str) -> Result<AbcFile, AbcParseError> {
             let block_lines = collect_block(&lines, &mut index);
             let header = block_lines
                 .first()
-                .ok_or_else(|| AbcParseError::new(index + 1, "invalid record header"))?;
+                .ok_or_else(|| ArkParseError::new(index + 1, "invalid record header"))?;
             let name = header
                 .trim()
                 .strip_prefix(".record ")
                 .and_then(|rest| rest.split('{').next())
                 .map(|s| s.trim().to_owned())
-                .ok_or_else(|| AbcParseError::new(index + 1, "invalid record header"))?;
+                .ok_or_else(|| ArkParseError::new(index + 1, "invalid record header"))?;
             let body = block_lines.join("\n");
             file.records.push(RecordEntry {
                 name,
@@ -159,7 +160,7 @@ pub fn parse_abc_file(input: &str) -> Result<AbcFile, AbcParseError> {
                 lines: block_lines.clone(),
             });
             let rec_index = file.records.len() - 1;
-            file.segments.push(AbcSegment::Record(rec_index));
+            file.segments.push(ArkSegment::Record(rec_index));
             continue;
         }
 
@@ -172,16 +173,16 @@ pub fn parse_abc_file(input: &str) -> Result<AbcFile, AbcParseError> {
             let block_lines = collect_block(&lines, &mut index);
             let header = block_lines
                 .first()
-                .ok_or_else(|| AbcParseError::new(index + 1, "missing literal header"))?;
+                .ok_or_else(|| ArkParseError::new(index + 1, "missing literal header"))?;
             let mut parts = header.trim().splitn(3, ' ');
             let idx_str = parts
                 .next()
-                .ok_or_else(|| AbcParseError::new(index + 1, "missing literal index"))?;
+                .ok_or_else(|| ArkParseError::new(index + 1, "missing literal index"))?;
             let offset_str = parts
                 .next()
-                .ok_or_else(|| AbcParseError::new(index + 1, "missing literal offset"))?;
+                .ok_or_else(|| ArkParseError::new(index + 1, "missing literal offset"))?;
             let literal_index = idx_str.parse::<u32>().map_err(|_| {
-                AbcParseError::new(index + 1, format!("invalid literal index {idx_str}"))
+                ArkParseError::new(index + 1, format!("invalid literal index {idx_str}"))
             })?;
             let literal_offset = parse_hex_u32(offset_str)?;
             let body = block_lines.join("\n");
@@ -192,11 +193,11 @@ pub fn parse_abc_file(input: &str) -> Result<AbcFile, AbcParseError> {
                 lines: block_lines.clone(),
             });
             let lit_index = file.literals.len() - 1;
-            file.segments.push(AbcSegment::Literal(lit_index));
+            file.segments.push(ArkSegment::Literal(lit_index));
             continue;
         }
 
-        file.segments.push(AbcSegment::Raw(line.to_owned()));
+        file.segments.push(ArkSegment::Raw(line.to_owned()));
         index += 1;
     }
 
@@ -219,27 +220,28 @@ fn collect_block(lines: &[&str], index: &mut usize) -> Vec<String> {
     buffer
 }
 
-fn parse_hex_u32(token: &str) -> Result<u32, AbcParseError> {
+fn parse_hex_u32(token: &str) -> Result<u32, ArkParseError> {
     let trimmed = token.trim_start_matches('+');
     let without_prefix = trimmed.trim_start_matches("0x");
     u32::from_str_radix(without_prefix, 16)
-        .map_err(|_| AbcParseError::new(0, format!("invalid hex literal {token}")))
+        .map_err(|_| ArkParseError::new(0, format!("invalid hex literal {token}")))
 }
 
-impl AbcFile {
+impl ArkModule {
+    /// Renders the module back into Ark textual disassembly.
     pub fn to_string(&self) -> String {
         let mut output = String::new();
         for segment in &self.segments {
             match segment {
-                AbcSegment::Raw(line) => {
+                ArkSegment::Raw(line) => {
                     output.push_str(line);
                     output.push('\n');
                 }
-                AbcSegment::Language(line) => {
+                ArkSegment::Language(line) => {
                     output.push_str(line);
                     output.push('\n');
                 }
-                AbcSegment::Literal(idx) => {
+                ArkSegment::Literal(idx) => {
                     if let Some(entry) = self.literals.get(*idx) {
                         for line in &entry.lines {
                             output.push_str(line);
@@ -247,7 +249,7 @@ impl AbcFile {
                         }
                     }
                 }
-                AbcSegment::Record(idx) => {
+                ArkSegment::Record(idx) => {
                     if let Some(entry) = self.records.get(*idx) {
                         for line in &entry.lines {
                             output.push_str(line);
@@ -255,11 +257,11 @@ impl AbcFile {
                         }
                     }
                 }
-                AbcSegment::Function(idx) => {
+                ArkSegment::Function(idx) => {
                     if let Some(entry) = self.functions.get(*idx) {
-                        if let (Some(function), Some(pool)) = (&entry.parsed, entry.pool.as_ref()) {
+                        if let Some(function) = &entry.parsed {
                             if entry.raw_text.is_empty() {
-                                let text = function.to_string(&entry.annotations, pool);
+                                let text = function.to_string(&entry.annotations);
                                 output.push_str(&text);
                                 if !text.ends_with('\n') {
                                     output.push('\n');
@@ -269,10 +271,8 @@ impl AbcFile {
                         }
 
                         if entry.raw_text.is_empty() {
-                            if let (Some(function), Some(pool)) =
-                                (&entry.parsed, entry.pool.as_ref())
-                            {
-                                let text = function.to_string(&entry.annotations, pool);
+                            if let Some(function) = &entry.parsed {
+                                let text = function.to_string(&entry.annotations);
                                 output.push_str(&text);
                                 if !text.ends_with('\n') {
                                     output.push('\n');
@@ -306,7 +306,7 @@ mod tests {
     #[test]
     fn parse_modules_fixture() {
         let data = std::fs::read_to_string("test-data/modules.txt").expect("fixture missing");
-        let abc = parse_abc_file(&data).expect("failed to parse modules file");
+        let abc = parse_ark_module(&data).expect("failed to parse modules file");
         assert_eq!(abc.language.as_deref(), Some("ECMAScript"));
         assert!(!abc.literals.is_empty());
         assert!(!abc.records.is_empty());

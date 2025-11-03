@@ -1,12 +1,11 @@
 //! Function bodies, metadata, and control flow constructs.
 
-use crate::attributes::DebugInfo;
-use crate::constant_pool::ConstantPool;
-use crate::disassembly::format_function;
-use crate::instructions::Instruction;
-use crate::types::{FieldType, FunctionId, FunctionSignature, StringId, TypeId};
+use super::attributes::DebugInfo;
+use super::disassembly::format_function;
+use super::instructions::Instruction;
+use crate::lowlevel::{FunctionId, TypeId};
 
-/// Categorises functions within an Ark module.
+/// Categorises the role a function plays within an Ark module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FunctionKind {
     TopLevel,
@@ -23,7 +22,7 @@ pub enum FunctionKind {
     Unknown(u8),
 }
 
-/// Additional function-level flags present in metadata tables.
+/// Additional function-level flags present in Ark metadata tables.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FunctionFlag(pub u32);
 
@@ -52,16 +51,16 @@ impl Default for FunctionFlag {
     }
 }
 
-/// Function parameter metadata.
+/// Describes a single function parameter, including its name, type, and optional default value.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionParameter {
-    pub name: Option<StringId>,
-    pub type_info: FieldType,
+    pub name: Option<String>,
+    pub type_name: String,
     pub default_literal: Option<u32>,
     pub is_optional: bool,
 }
 
-/// A single basic block containing a linear sequence of instructions with a terminating control transfer.
+/// A linear sequence of instructions that executes without branching until the end of the block.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BasicBlock {
     pub label: u32,
@@ -77,13 +76,14 @@ impl BasicBlock {
     }
 }
 
-/// A convenience wrapper for a list of instruction blocks.
+/// A container for the basic blocks that make up a function body.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct InstructionBlock {
     pub blocks: Vec<BasicBlock>,
 }
 
-/// Exception handler metadata describing try/catch/finally ranges.
+/// Metadata describing the range covered by a `try` block and its associated handler.
+/// Signature information shared by textual disassembly and the high-level model.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExceptionHandler {
     pub try_index: u32,
@@ -96,22 +96,41 @@ pub struct ExceptionHandler {
 }
 
 /// Core representation of a function body in Ark bytecode.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FunctionSignature {
+    pub this_type: Option<String>,
+    pub parameters: Vec<String>,
+    pub return_type: String,
+}
+
+impl FunctionSignature {
+    pub fn new(return_type: impl Into<String>) -> Self {
+        FunctionSignature {
+            this_type: None,
+            parameters: Vec::new(),
+            return_type: return_type.into(),
+        }
+    }
+}
+
+/// In-memory representation of an Ark function body together with decoded metadata.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Function {
     pub id: FunctionId,
-    pub name: Option<StringId>,
+    pub name: Option<String>,
     pub signature: FunctionSignature,
     pub kind: FunctionKind,
     pub flags: FunctionFlag,
     pub register_count: u16,
     pub parameters: Vec<FunctionParameter>,
-    pub locals: Vec<FieldType>,
+    pub locals: Vec<String>,
     pub instruction_block: InstructionBlock,
     pub exception_handlers: Vec<ExceptionHandler>,
     pub debug_info: Option<DebugInfo>,
 }
 
 impl Function {
+    /// Creates an empty function with the supplied identifier and signature.
     pub fn new(id: FunctionId, signature: FunctionSignature) -> Self {
         Function {
             id,
@@ -128,7 +147,8 @@ impl Function {
         }
     }
 
-    pub fn to_string(&self, annotations: &[String], pool: &ConstantPool) -> String {
+    /// Formats the function into Ark textual disassembly, optionally prefixing annotations.
+    pub fn to_string(&self, annotations: &[String]) -> String {
         let mut output = String::new();
         for annotation in annotations {
             output.push_str(annotation);
@@ -137,7 +157,7 @@ impl Function {
             }
         }
 
-        let formatted = match format_function(self, pool) {
+        let formatted = match format_function(self) {
             Ok(text) => text,
             Err(err) => format!("# Failed to format function: {err}"),
         };

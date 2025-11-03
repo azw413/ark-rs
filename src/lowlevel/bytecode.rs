@@ -3,19 +3,19 @@
 //! This module handles the conversion between binary bytecode and high-level
 //! representations like Instructions, BasicBlocks, and InstructionBlocks.
 
-use crate::abc_types::AbcReader;
+use super::metadata::AbcReader;
 use crate::error::{ArkError, ArkResult};
-use crate::functions::{BasicBlock, ExceptionHandler, FunctionParameter, InstructionBlock};
-use crate::instructions::{
-    IdentifierOperand, ImmediateOperand, Instruction, InstructionFormat, InstructionIndex, Opcode,
-    Operand, Register, RegisterOperand, RegisterWidth,
+use crate::highlevel::functions::{
+    BasicBlock, ExceptionHandler, FunctionParameter, FunctionSignature, InstructionBlock,
 };
-use crate::isa_generated::{INSTRUCTION_TABLE, PREFIXED_INSTRUCTION_TABLE};
-use crate::types::{
-    FieldType, FunctionId, FunctionSignature, PrimitiveType, StringId, TypeDescriptor, TypeId,
+use crate::highlevel::instructions::{
+    IdentifierOperand, ImmediateOperand, Instruction, InstructionFlags, InstructionFormat,
+    InstructionIndex, Opcode, Operand, Register, RegisterOperand, RegisterWidth,
 };
+use crate::lowlevel::isa_generated::{INSTRUCTION_TABLE, PREFIXED_INSTRUCTION_TABLE};
+use crate::lowlevel::{FunctionId, StringId, TypeId};
 
-/// Bytecode section containing the raw function body data
+/// Metadata viewed directly from the bytecode section (offsets, register counts, etc.).
 #[derive(Debug, Clone)]
 pub struct BytecodeSection {
     pub code_offset: u32,
@@ -27,7 +27,7 @@ pub struct BytecodeSection {
     pub traits_count: u16,
 }
 
-/// Represents a decoded function body with metadata and instructions
+/// Result of decoding a function body, including instructions and exception handlers.
 #[derive(Debug, Clone)]
 pub struct DecodedFunction {
     pub id: FunctionId,
@@ -35,12 +35,12 @@ pub struct DecodedFunction {
     pub signature: FunctionSignature,
     pub register_count: u16,
     pub parameters: Vec<FunctionParameter>,
-    pub locals: Vec<FieldType>,
+    pub locals: Vec<String>,
     pub instruction_block: InstructionBlock,
     pub exception_handlers: Vec<ExceptionHandler>,
 }
 
-/// Decodes a function body from binary bytecode
+/// Decodes a function body from binary bytecode using the default string resolver.
 pub fn decode_function_body(
     bytecode: &[u8],
     offset: u32,
@@ -58,7 +58,7 @@ pub fn decode_function_body(
     )
 }
 
-/// Decodes a function body from binary bytecode with string resolution
+/// Decodes a function body from binary bytecode using a custom string resolver.
 pub fn decode_function_body_with_resolver<F>(
     bytecode: &[u8],
     offset: u32,
@@ -86,11 +86,10 @@ where
     let mut signature_parameters = Vec::with_capacity(parameter_count as usize);
     let mut parameters = Vec::with_capacity(parameter_count as usize);
     for _ in 0..parameter_count {
-        let field = FieldType::new(TypeDescriptor::Primitive(PrimitiveType::Any));
-        signature_parameters.push(field.clone());
+        signature_parameters.push("any".to_owned());
         parameters.push(FunctionParameter {
             name: None,
-            type_info: field,
+            type_name: "any".to_owned(),
             default_literal: None,
             is_optional: false,
         });
@@ -257,7 +256,7 @@ fn decode_instruction(
         opcode,
         format,
         operands,
-        flags: crate::instructions::InstructionFlags::NONE,
+        flags: InstructionFlags::NONE,
         comment: None,
         bytecode_offset: offset,
         byte_length: 0,
@@ -322,8 +321,8 @@ fn decode_operands(
         InstructionFormat::ID16 => {
             let id = reader.read_u16()?;
             let operand = if let Some(resolver) = string_resolver {
-                if resolver(id as u32).is_some() {
-                    Operand::String(StringId(id as u32))
+                if let Some(value) = resolver(id as u32) {
+                    Operand::String(value)
                 } else {
                     Operand::Identifier(Id16(id))
                 }

@@ -1,12 +1,12 @@
 //! Attribute and debug information structures used across Ark bytecode.
 
-use crate::instructions::InstructionIndex;
-use crate::types::{StringId, TypeDescriptor};
+use super::instructions::InstructionIndex;
+use crate::lowlevel::TypeDescriptor;
 
-/// High-level attribute container referencing specific attribute payloads.
+/// High-level attribute container capturing the attribute name and concrete payload.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Attribute {
-    pub name: StringId,
+    pub name: String,
     pub kind: AttributeKind,
 }
 
@@ -21,21 +21,21 @@ pub enum AttributeKind {
     Custom(Vec<u8>),
 }
 
-/// Describes a runtime visible annotation.
+/// Runtime-visible annotation and its key/value elements.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeAnnotation {
     pub type_descriptor: TypeDescriptor,
     pub elements: Vec<AnnotationElement>,
 }
 
-/// Single key/value pair inside an annotation.
+/// Single key/value pair within an annotation.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AnnotationElement {
-    pub name: StringId,
+    pub name: String,
     pub value: AnnotationValue,
 }
 
-/// Values supported inside annotation elements.
+/// Supported value kinds inside annotation elements.
 #[derive(Debug, Clone, PartialEq)]
 pub enum AnnotationValue {
     Boolean(bool),
@@ -45,14 +45,14 @@ pub enum AnnotationValue {
     U64(u64),
     F32(f32),
     F64(f64),
-    String(StringId),
+    String(String),
     Type(TypeDescriptor),
     Array(Vec<AnnotationValue>),
     Nested(RuntimeAnnotation),
     Null,
 }
 
-/// Debug information captured for a function body.
+/// Debug information captured for a function body (line numbers, locals, source map).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DebugInfo {
     pub line_numbers: Vec<LineNumberEntry>,
@@ -60,17 +60,17 @@ pub struct DebugInfo {
     pub source_map: Vec<SourceMapEntry>,
 }
 
-/// Associates program counters with source code line numbers.
+/// Associates instruction positions with source line numbers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LineNumberEntry {
     pub instruction: InstructionIndex,
     pub line: u32,
 }
 
-/// Information about active local variables within a scope.
+/// Describes a local variable that is active within a bytecode range.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LocalVariableEntry {
-    pub name: StringId,
+    pub name: String,
     pub type_descriptor: TypeDescriptor,
     pub start: InstructionIndex,
     pub end: InstructionIndex,

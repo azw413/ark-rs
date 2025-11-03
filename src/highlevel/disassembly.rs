@@ -3,25 +3,21 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::{self, Write};
 
-use crate::constant_pool::ConstantPool;
-use crate::functions::Function;
-use crate::instructions::{IdentifierOperand, ImmediateOperand, Operand, RegisterOperand};
-use crate::types::{FieldType, PrimitiveType, StringId, TypeDescriptor};
+use super::functions::Function;
+use super::instructions::{IdentifierOperand, ImmediateOperand, Operand, RegisterOperand};
+use crate::lowlevel::TypeDescriptor;
 
 /// Render a single [`Function`] into the Ark textual disassembly representation.
-pub fn format_function(function: &Function, pool: &ConstantPool) -> Result<String, fmt::Error> {
+pub fn format_function(function: &Function) -> Result<String, fmt::Error> {
     let mut output = String::new();
-    write_function(&mut output, function, pool)?;
+    write_function(&mut output, function)?;
     Ok(output)
 }
 
 /// Internal formatter that writes directly into a [`fmt::Write`] instance.
-pub fn write_function<W: Write>(mut w: W, function: &Function, pool: &ConstantPool) -> fmt::Result {
-    let return_ty = format_type(&function.signature.return_type, pool);
-    let name = function
-        .name
-        .and_then(|id| resolve_string(pool, id))
-        .unwrap_or("<unnamed>");
+pub fn write_function<W: Write>(mut w: W, function: &Function) -> fmt::Result {
+    let return_ty = &function.signature.return_type;
+    let name = function.name.as_deref().unwrap_or("<unnamed>");
 
     write!(w, ".function {} {}(", return_ty, name)?;
 
@@ -29,10 +25,10 @@ pub fn write_function<W: Write>(mut w: W, function: &Function, pool: &ConstantPo
         if index > 0 {
             write!(w, ", ")?;
         }
-        let param_type = format_type(&param.type_info, pool);
+        let param_type = &param.type_name;
         let param_name = param
             .name
-            .and_then(|id| resolve_string(pool, id))
+            .as_deref()
             .unwrap_or_else(|| fallback_param_name(index));
         write!(w, "{} {}", param_type, param_name)?;
     }
@@ -100,7 +96,7 @@ pub fn write_function<W: Write>(mut w: W, function: &Function, pool: &ConstantPo
 
             let mnemonic = instruction.opcode.mnemonic();
             write!(w, "    {}", mnemonic)?;
-            let operands = format_operands(&instruction.operands, pool, &branch_lookup);
+            let operands = format_operands(&instruction.operands, &branch_lookup);
             if !operands.is_empty() {
                 write!(w, " ")?;
                 for (index, operand) in operands.iter().enumerate() {
@@ -164,21 +160,15 @@ fn add_label(labels: &mut BTreeMap<u32, Vec<String>>, offset: u32, label: String
     }
 }
 
-fn format_operands(
-    operands: &[Operand],
-    pool: &ConstantPool,
-    label_lookup: &HashMap<u32, String>,
-) -> Vec<String> {
+fn format_operands(operands: &[Operand], label_lookup: &HashMap<u32, String>) -> Vec<String> {
     operands
         .iter()
         .map(|operand| match operand {
             Operand::Register(register) => format_register_operand(*register),
             Operand::Immediate(immediate) => format_immediate_operand(*immediate),
-            Operand::Identifier(identifier) => format_identifier_operand(*identifier, pool),
-            Operand::String(id) => resolve_string(pool, *id)
-                .map(escape_string)
-                .unwrap_or_else(|| escape_string(&missing_string(*id))),
-            Operand::Type(descriptor) => format_type_descriptor(descriptor, pool),
+            Operand::Identifier(identifier) => format_identifier_operand(*identifier),
+            Operand::String(value) => escape_string(value),
+            Operand::Type(descriptor) => format_type_descriptor(descriptor),
             Operand::TypeId(type_id) => format!("type#{}", type_id.0),
             Operand::Field(field_id) => format!("field#{}", field_id.0),
             Operand::Function(function_id) => format!("func#{}", function_id.0),
@@ -219,21 +209,10 @@ fn format_immediate_operand(immediate: ImmediateOperand) -> String {
     }
 }
 
-fn format_identifier_operand(identifier: IdentifierOperand, pool: &ConstantPool) -> String {
+fn format_identifier_operand(identifier: IdentifierOperand) -> String {
     match identifier {
-        IdentifierOperand::Id16(id) => {
-            let string_id = StringId(id as u32);
-            if let Some(value) = resolve_string(pool, string_id) {
-                escape_string(value)
-            } else {
-                format!("@0x{:x}", id)
-            }
-        }
+        IdentifierOperand::Id16(id) => format!("@0x{:x}", id),
     }
-}
-
-fn format_type(ty: &FieldType, pool: &ConstantPool) -> String {
-    format_type_descriptor(&ty.descriptor, pool)
 }
 
 fn escape_string(value: &str) -> String {
@@ -252,71 +231,34 @@ fn escape_string(value: &str) -> String {
     result
 }
 
-fn format_type_descriptor(descriptor: &TypeDescriptor, pool: &ConstantPool) -> String {
+fn format_type_descriptor(descriptor: &TypeDescriptor) -> String {
     match descriptor {
-        TypeDescriptor::Primitive(primitive) => match primitive {
-            PrimitiveType::Void => "void".to_owned(),
-            PrimitiveType::Boolean => "boolean".to_owned(),
-            PrimitiveType::I8 => "i8".to_owned(),
-            PrimitiveType::I16 => "i16".to_owned(),
-            PrimitiveType::I32 => "i32".to_owned(),
-            PrimitiveType::I64 => "i64".to_owned(),
-            PrimitiveType::U8 => "u8".to_owned(),
-            PrimitiveType::U16 => "u16".to_owned(),
-            PrimitiveType::U32 => "u32".to_owned(),
-            PrimitiveType::U64 => "u64".to_owned(),
-            PrimitiveType::F32 => "f32".to_owned(),
-            PrimitiveType::F64 => "f64".to_owned(),
-            PrimitiveType::String => "string".to_owned(),
-            PrimitiveType::Any => "any".to_owned(),
-            PrimitiveType::Undefined => "undefined".to_owned(),
-            PrimitiveType::Object => "object".to_owned(),
-        },
+        TypeDescriptor::Primitive(primitive) => format!("{:?}", primitive).to_ascii_lowercase(),
         TypeDescriptor::Type(type_id) => format!("type#{}", type_id.0),
         TypeDescriptor::Function(function_id) => format!("func#{}", function_id.0),
         TypeDescriptor::Array {
             element,
             dimensions,
         } => {
-            let element = format_type_descriptor(element, pool);
-            format!("{}[{}]", element, dimensions)
+            let element_str = format_type_descriptor(element);
+            format!("{}[{}]", element_str, dimensions)
         }
         TypeDescriptor::Generic { base, arguments } => {
-            let base = format!("type#{}", base.0);
-            let args: Vec<_> = arguments
-                .iter()
-                .map(|arg| format_type_descriptor(arg, pool))
-                .collect();
-            format!("{}<{}>", base, args.join(", "))
+            let base_str = format!("type#{}", base.0);
+            let args: Vec<String> = arguments.iter().map(format_type_descriptor).collect();
+            format!("{}<{}>", base_str, args.join(", "))
         }
         TypeDescriptor::TypeParameter { owner, index } => format!("tparam#{}_{}", owner.0, index),
         TypeDescriptor::Union(types) => {
-            let parts: Vec<_> = types
-                .iter()
-                .map(|ty| format_type_descriptor(ty, pool))
-                .collect();
+            let parts: Vec<String> = types.iter().map(format_type_descriptor).collect();
             parts.join(" | ")
         }
         TypeDescriptor::Intersection(types) => {
-            let parts: Vec<_> = types
-                .iter()
-                .map(|ty| format_type_descriptor(ty, pool))
-                .collect();
+            let parts: Vec<String> = types.iter().map(format_type_descriptor).collect();
             parts.join(" & ")
         }
         TypeDescriptor::Unknown(id) => format!("unknown#{}", id),
     }
-}
-
-fn resolve_string<'a>(pool: &'a ConstantPool, id: StringId) -> Option<&'a str> {
-    pool.strings
-        .iter()
-        .find(|record| record.id == id)
-        .map(|record| record.value.as_str())
-}
-
-fn missing_string(id: StringId) -> String {
-    format!("<string#{}>", id.0)
 }
 
 fn fallback_param_name(index: usize) -> &'static str {
@@ -334,62 +276,36 @@ fn fallback_param_name(index: usize) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constant_pool::{ConstantPool, StringRecord};
-    use crate::functions::{BasicBlock, Function, FunctionParameter};
-    use crate::instructions::{
+    use crate::highlevel::functions::{BasicBlock, Function, FunctionParameter, FunctionSignature};
+    use crate::highlevel::instructions::{
         IdentifierOperand, ImmediateOperand, Instruction, InstructionFormat, InstructionIndex,
         Opcode, Operand, Register, RegisterOperand,
     };
-    use crate::types::{FieldType, FunctionSignature, PrimitiveType, StringId, TypeDescriptor};
-
-    fn string_record(id: u32, value: &str) -> StringRecord {
-        StringRecord {
-            id: StringId::new(id),
-            value: value.to_owned(),
-        }
-    }
+    use crate::lowlevel::FunctionId;
 
     #[test]
     fn format_sample_function() {
-        let mut pool = ConstantPool::default();
-        pool.strings = vec![
-            string_record(0, ".func_main_0"),
-            string_record(1, "a0"),
-            string_record(2, "a1"),
-            string_record(3, "a2"),
-            string_record(4, "a"),
-            string_record(5, "b"),
-            string_record(6, "d"),
-        ];
+        let mut signature = FunctionSignature::new("any");
+        signature.parameters = vec!["any".to_owned(), "any".to_owned(), "any".to_owned()];
 
-        let return_type = FieldType::new(TypeDescriptor::Primitive(PrimitiveType::Any));
-        let param_type = FieldType::new(TypeDescriptor::Primitive(PrimitiveType::Any));
-
-        let signature = FunctionSignature {
-            this_type: None,
-            parameters: vec![param_type.clone(), param_type.clone(), param_type.clone()],
-            return_type: return_type.clone(),
-            flags: Default::default(),
-        };
-
-        let mut function = Function::new(crate::types::FunctionId::new(0), signature);
-        function.name = Some(StringId::new(0));
+        let mut function = Function::new(FunctionId::new(0), signature);
+        function.name = Some(".func_main_0".to_owned());
         function.parameters = vec![
             FunctionParameter {
-                name: Some(StringId::new(1)),
-                type_info: param_type.clone(),
+                name: Some("a0".to_owned()),
+                type_name: "any".to_owned(),
                 default_literal: None,
                 is_optional: false,
             },
             FunctionParameter {
-                name: Some(StringId::new(2)),
-                type_info: param_type.clone(),
+                name: Some("a1".to_owned()),
+                type_name: "any".to_owned(),
                 default_literal: None,
                 is_optional: false,
             },
             FunctionParameter {
-                name: Some(StringId::new(3)),
-                type_info: param_type.clone(),
+                name: Some("a2".to_owned()),
+                type_name: "any".to_owned(),
                 default_literal: None,
                 is_optional: false,
             },
@@ -427,15 +343,13 @@ mod tests {
             &mut index,
             Opcode::Sta,
             InstructionFormat::V8,
-            vec![Operand::Register(RegisterOperand::V8(
-                crate::instructions::Register(0),
-            ))],
+            vec![Operand::Register(RegisterOperand::V8(Register(0)))],
         ));
         block.instructions.push(make_instruction(
             &mut index,
             Opcode::ThrowUndefinedIfHoleWithName,
             InstructionFormat::PREF_ID16,
-            vec![Operand::String(StringId::new(4))],
+            vec![Operand::String("a".to_owned())],
         ));
         block.instructions.push(make_instruction(
             &mut index,
@@ -447,23 +361,19 @@ mod tests {
             &mut index,
             Opcode::Sta,
             InstructionFormat::V8,
-            vec![Operand::Register(RegisterOperand::V8(
-                crate::instructions::Register(1),
-            ))],
+            vec![Operand::Register(RegisterOperand::V8(Register(1)))],
         ));
         block.instructions.push(make_instruction(
             &mut index,
             Opcode::ThrowUndefinedIfHoleWithName,
             InstructionFormat::PREF_ID16,
-            vec![Operand::String(StringId::new(5))],
+            vec![Operand::String("b".to_owned())],
         ));
         block.instructions.push(make_instruction(
             &mut index,
             Opcode::Lda,
             InstructionFormat::V8,
-            vec![Operand::Register(RegisterOperand::V8(
-                crate::instructions::Register(1),
-            ))],
+            vec![Operand::Register(RegisterOperand::V8(Register(1)))],
         ));
         block.instructions.push(make_instruction(
             &mut index,
@@ -471,16 +381,14 @@ mod tests {
             InstructionFormat::IMM8_V8,
             vec![
                 Operand::Immediate(ImmediateOperand::Imm8(0)),
-                Operand::Register(RegisterOperand::V8(crate::instructions::Register(0))),
+                Operand::Register(RegisterOperand::V8(Register(0))),
             ],
         ));
         block.instructions.push(make_instruction(
             &mut index,
             Opcode::Sta,
             InstructionFormat::V8,
-            vec![Operand::Register(RegisterOperand::V8(
-                crate::instructions::Register(0),
-            ))],
+            vec![Operand::Register(RegisterOperand::V8(Register(0)))],
         ));
         block.instructions.push(make_instruction(
             &mut index,
@@ -492,23 +400,19 @@ mod tests {
             &mut index,
             Opcode::Sta,
             InstructionFormat::V8,
-            vec![Operand::Register(RegisterOperand::V8(
-                crate::instructions::Register(1),
-            ))],
+            vec![Operand::Register(RegisterOperand::V8(Register(1)))],
         ));
         block.instructions.push(make_instruction(
             &mut index,
             Opcode::ThrowUndefinedIfHoleWithName,
             InstructionFormat::PREF_ID16,
-            vec![Operand::String(StringId::new(6))],
+            vec![Operand::String("d".to_owned())],
         ));
         block.instructions.push(make_instruction(
             &mut index,
             Opcode::Lda,
             InstructionFormat::V8,
-            vec![Operand::Register(RegisterOperand::V8(
-                crate::instructions::Register(1),
-            ))],
+            vec![Operand::Register(RegisterOperand::V8(Register(1)))],
         ));
         block.instructions.push(make_instruction(
             &mut index,
@@ -516,13 +420,13 @@ mod tests {
             InstructionFormat::IMM8_V8,
             vec![
                 Operand::Immediate(ImmediateOperand::Imm8(1)),
-                Operand::Register(RegisterOperand::V8(crate::instructions::Register(0))),
+                Operand::Register(RegisterOperand::V8(Register(0))),
             ],
         ));
 
         function.instruction_block.blocks.push(block);
 
-        let disassembled = format_function(&function, &pool).expect("format failed");
+        let disassembled = format_function(&function).expect("format failed");
 
         let expected = concat!(
             ".function any .func_main_0(any a0, any a1, any a2) {\n",
@@ -566,8 +470,6 @@ mod tests {
     #[test]
     fn operand_rendering_covers_all_formats() {
         use InstructionFormat::*;
-
-        let pool = ConstantPool::default();
 
         let imm4 = |v: u8| Operand::Immediate(ImmediateOperand::Imm4(v));
         let imm8 = |v: u8| Operand::Immediate(ImmediateOperand::Imm8(v));
@@ -773,25 +675,18 @@ mod tests {
         assert_eq!(cases.len(), 58);
 
         for (format, operands, expected) in cases {
-            let rendered = format_operands(&operands, &pool, &HashMap::new()).join(", ");
+            let rendered = format_operands(&operands, &HashMap::new()).join(", ");
             assert_eq!(rendered, expected, "format {:?}", format);
         }
     }
 
     #[test]
-    fn identifier_operands_use_pool_strings() {
-        let mut pool = ConstantPool::default();
-        pool.strings.push(StringRecord {
-            id: StringId::new(0),
-            value: "hello".to_owned(),
-        });
-
+    fn identifier_operands_render_with_hex_prefix() {
         let rendered = format_operands(
-            &[Operand::Identifier(IdentifierOperand::Id16(0))],
-            &pool,
+            &[Operand::Identifier(IdentifierOperand::Id16(0x2a))],
             &HashMap::new(),
         );
 
-        assert_eq!(rendered, vec!["\"hello\"".to_owned()]);
+        assert_eq!(rendered, vec!["@0x2a".to_owned()]);
     }
 }

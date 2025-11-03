@@ -1,6 +1,6 @@
 //! Constant pool definitions covering strings, literal arrays, and member descriptors.
 
-use crate::types::{
+use super::types::{
     FieldId, FieldType, FunctionId, FunctionSignature, StringId, TypeDescriptor, TypeId,
 };
 

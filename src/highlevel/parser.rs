@@ -1,13 +1,14 @@
 //! Parsing utilities for Ark textual disassembly back into bytecode structures.
 
-use crate::constant_pool::{ConstantPool, StringRecord};
-use crate::functions::{BasicBlock, Function, FunctionParameter, InstructionBlock};
-use crate::instructions::{
+use super::functions::{
+    BasicBlock, Function, FunctionParameter, FunctionSignature, InstructionBlock,
+};
+use super::instructions::{
     IdentifierOperand, ImmediateOperand, Instruction, InstructionIndex, Opcode, Operand, Register,
     RegisterOperand,
 };
-use crate::instructions_generated::MNEMONIC_TO_OPCODE;
-use crate::types::{FieldType, FunctionSignature, PrimitiveType, StringId, TypeDescriptor};
+use crate::lowlevel::instructions_generated::MNEMONIC_TO_OPCODE;
+use crate::lowlevel::{FieldId, FunctionId};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseError {
@@ -24,21 +25,19 @@ impl ParseError {
     }
 }
 
-/// Parse a textual Ark function definition into the in-memory representation.
-pub fn parse_function(input: &str, pool: &mut ConstantPool) -> Result<Function, ParseError> {
-    Parser::new(input, pool).parse_function()
+/// Parses a textual Ark function definition into the high-level [`Function`] structure.
+pub fn parse_function(input: &str) -> Result<Function, ParseError> {
+    Parser::new(input).parse_function()
 }
 
 struct Parser<'a> {
-    pool: &'a mut ConstantPool,
     lines: Vec<&'a str>,
     index: usize,
 }
 
 impl<'a> Parser<'a> {
-    fn new(input: &'a str, pool: &'a mut ConstantPool) -> Self {
+    fn new(input: &'a str) -> Self {
         Parser {
-            pool,
             lines: input.lines().collect(),
             index: 0,
         }
@@ -61,22 +60,19 @@ impl<'a> Parser<'a> {
         let (name_part, params_part) = split_once(name_and_params, '(')
             .ok_or_else(|| ParseError::new(self.current_line(), "missing parameter list"))?;
 
-        let function_name = name_part.trim();
+        let function_name = name_part.trim().to_owned();
         let return_type = self.parse_type(ret_ty_str)?;
-        let name_id = self.intern_string(function_name);
 
         let parameters = self.parse_parameters(params_part.trim())?;
-        let signature = FunctionSignature {
-            this_type: None,
-            parameters: parameters.iter().map(|p| p.type_info.clone()).collect(),
-            return_type: return_type.clone(),
-            flags: Default::default(),
-        };
+        let mut signature = FunctionSignature::new(return_type.clone());
+        signature.parameters = parameters
+            .iter()
+            .map(|param| param.type_name.clone())
+            .collect();
 
-        let mut function = Function::new(crate::types::FunctionId::new(0), signature);
-        function.name = Some(name_id);
+        let mut function = Function::new(FunctionId::new(0), signature);
+        function.name = Some(function_name);
         function.parameters = parameters;
-        function.signature.return_type = return_type;
 
         let mut block = BasicBlock::new(0);
         let mut instruction_index = 0;
@@ -139,10 +135,10 @@ impl<'a> Parser<'a> {
                 let (ty_str, name_str) = split_once(segment, ' ')
                     .ok_or_else(|| ParseError::new(self.current_line(), "malformed parameter"))?;
                 let ty = self.parse_type(ty_str)?;
-                let name_id = self.intern_string(name_str.trim());
+                let name = name_str.trim().to_owned();
                 Ok(FunctionParameter {
-                    name: Some(name_id),
-                    type_info: ty,
+                    name: Some(name),
+                    type_name: ty,
                     default_literal: None,
                     is_optional: false,
                 })
@@ -150,32 +146,11 @@ impl<'a> Parser<'a> {
             .collect()
     }
 
-    fn parse_type(&mut self, token: &str) -> Result<FieldType, ParseError> {
-        let descriptor = match token {
-            "void" => TypeDescriptor::Primitive(PrimitiveType::Void),
-            "boolean" => TypeDescriptor::Primitive(PrimitiveType::Boolean),
-            "i8" => TypeDescriptor::Primitive(PrimitiveType::I8),
-            "i16" => TypeDescriptor::Primitive(PrimitiveType::I16),
-            "i32" => TypeDescriptor::Primitive(PrimitiveType::I32),
-            "i64" => TypeDescriptor::Primitive(PrimitiveType::I64),
-            "u8" => TypeDescriptor::Primitive(PrimitiveType::U8),
-            "u16" => TypeDescriptor::Primitive(PrimitiveType::U16),
-            "u32" => TypeDescriptor::Primitive(PrimitiveType::U32),
-            "u64" => TypeDescriptor::Primitive(PrimitiveType::U64),
-            "f32" => TypeDescriptor::Primitive(PrimitiveType::F32),
-            "f64" => TypeDescriptor::Primitive(PrimitiveType::F64),
-            "string" => TypeDescriptor::Primitive(PrimitiveType::String),
-            "any" => TypeDescriptor::Primitive(PrimitiveType::Any),
-            "undefined" => TypeDescriptor::Primitive(PrimitiveType::Undefined),
-            "object" => TypeDescriptor::Primitive(PrimitiveType::Object),
-            other => {
-                return Err(ParseError::new(
-                    self.current_line(),
-                    format!("unknown type {other}"),
-                ));
-            }
-        };
-        Ok(FieldType::new(descriptor))
+    fn parse_type(&mut self, token: &str) -> Result<String, ParseError> {
+        if token.is_empty() {
+            return Err(ParseError::new(self.current_line(), "missing type"));
+        }
+        Ok(token.to_owned())
     }
 
     fn parse_operand(
@@ -186,8 +161,7 @@ impl<'a> Parser<'a> {
         if text.starts_with('"') && text.ends_with('"') && text.len() >= 2 {
             let inner = &text[1..text.len() - 1];
             let value = unescape_string(inner)?;
-            let id = self.intern_string(&value);
-            return Ok(Operand::String(id));
+            return Ok(Operand::String(value));
         }
         if text.starts_with("@0x") {
             let value = parse_hex(text.trim_start_matches('@'))?;
@@ -203,13 +177,13 @@ impl<'a> Parser<'a> {
             let value = rest.parse::<u32>().map_err(|_| {
                 ParseError::new(self.current_line(), format!("invalid function id {text}"))
             })?;
-            return Ok(Operand::Function(crate::types::FunctionId(value)));
+            return Ok(Operand::Function(FunctionId(value)));
         }
         if let Some(rest) = text.strip_prefix("field#") {
             let value = rest.parse::<u32>().map_err(|_| {
                 ParseError::new(self.current_line(), format!("invalid field id {text}"))
             })?;
-            return Ok(Operand::Field(crate::types::FieldId(value)));
+            return Ok(Operand::Field(FieldId(value)));
         }
         if let Some(rest) = text.strip_prefix("methodhandle#") {
             let value = rest.parse::<u32>().map_err(|_| {
@@ -246,26 +220,7 @@ impl<'a> Parser<'a> {
             }));
         }
 
-        let string_id = self.intern_string(text);
-        Ok(Operand::String(string_id))
-    }
-
-    fn intern_string(&mut self, value: &str) -> StringId {
-        if let Some(existing) = self
-            .pool
-            .strings
-            .iter()
-            .find(|record| record.value == value)
-            .map(|record| record.id)
-        {
-            return existing;
-        }
-        let id = StringId::new(self.pool.strings.len() as u32);
-        self.pool.strings.push(StringRecord {
-            id,
-            value: value.to_owned(),
-        });
-        id
+        Ok(Operand::String(text.to_owned()))
     }
 
     fn next_non_empty_line(&mut self) -> Result<&'a str, ParseError> {
@@ -578,33 +533,7 @@ pub(crate) fn normalize_function_text(original: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constant_pool::ConstantPool;
-    use crate::disassembly::format_function;
-
-    fn seed_pool() -> ConstantPool {
-        let mut pool = ConstantPool::default();
-        for (id, value) in [
-            (0, ".func_main_0"),
-            (1, "a0"),
-            (2, "a1"),
-            (3, "a2"),
-            (4, "a"),
-            (5, "b"),
-            (6, "d"),
-            (7, "hilog"),
-            (8, "info"),
-            (9, "DOMAIN"),
-            (10, "testTag"),
-            (11, "%{public}s"),
-            (12, "Ability onBackground"),
-        ] {
-            pool.strings.push(StringRecord {
-                id: StringId::new(id),
-                value: value.to_owned(),
-            });
-        }
-        pool
-    }
+    use crate::highlevel::disassembly::format_function;
 
     fn sample_text() -> &'static str {
         ".function any .func_main_0(any a0, any a1, any a2) {\n    getmodulenamespace 0x1\n    ldai 0x3\n    stmodulevar 0x0\n    ldexternalmodulevar 0x0\n    sta v0\n    throw.undefinedifholewithname \"a\"\n    ldexternalmodulevar 0x1\n    sta v1\n    throw.undefinedifholewithname \"b\"\n    lda v1\n    add2 0x0, v0\n    sta v0\n    ldlocalmodulevar 0x0\n    sta v1\n    throw.undefinedifholewithname \"d\"\n    lda v1\n    add2 0x1, v0\n\n}\n"
@@ -616,17 +545,15 @@ mod tests {
 
     #[test]
     fn parse_sample_function() {
-        let mut pool = seed_pool();
-        let function = parse_function(sample_text(), &mut pool).expect("parse failed");
-        let formatted = format_function(&function, &pool).expect("formatting failed");
+        let function = parse_function(sample_text()).expect("parse failed");
+        let formatted = format_function(&function).expect("formatting failed");
         assert_eq!(formatted, sample_text());
     }
 
     #[test]
     fn parse_complex_function() {
-        let mut pool = seed_pool();
-        let function = parse_function(complex_text(), &mut pool).expect("parse failed");
-        let formatted = format_function(&function, &pool).expect("formatting failed");
+        let function = parse_function(complex_text()).expect("parse failed");
+        let formatted = format_function(&function).expect("formatting failed");
         assert_eq!(formatted, complex_text());
     }
 
@@ -634,7 +561,7 @@ mod tests {
     fn parse_real_module_functions() {
         let data =
             std::fs::read_to_string("test-data/modules.txt").expect("failed to read modules.txt");
-        let abc = crate::abc::parse_abc_file(&data).expect("abc parse failed");
+        let abc = crate::parse_ark_module(&data).expect("abc parse failed");
         assert!(
             !abc.functions.is_empty(),
             "expected at least one function in fixtures"

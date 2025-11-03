@@ -1,9 +1,8 @@
 //! Class, field, and annotation metadata tables.
 
-use crate::attributes::RuntimeAnnotation;
-use crate::constant_pool::FieldDescriptor;
-use crate::functions::Function;
-use crate::types::{FieldId, FieldType, FunctionId, StringId, TypeDescriptor, TypeFlag, TypeId};
+use super::attributes::RuntimeAnnotation;
+use super::functions::Function;
+use crate::lowlevel::{FieldDescriptor, FieldId, FunctionId, TypeDescriptor, TypeFlag, TypeId};
 
 /// Unique identifier for class methods.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -44,24 +43,24 @@ impl Default for ClassFlag {
     }
 }
 
-/// Field metadata contained in a class definition.
+/// Field metadata as surfaced in the high-level class model.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassField {
     pub id: FieldId,
-    pub name: StringId,
-    pub descriptor: FieldType,
+    pub name: String,
+    pub descriptor: String,
     pub is_static: bool,
     pub is_readonly: bool,
     pub initial_literal: Option<u32>,
     pub annotations: Vec<RuntimeAnnotation>,
 }
 
-/// Methods defined within a class body.
+/// Method metadata as surfaced in the high-level class model.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassMethod {
     pub id: MethodId,
     pub function: FunctionId,
-    pub name: StringId,
+    pub name: String,
     pub type_params: Vec<TypeId>,
     pub annotations: Vec<RuntimeAnnotation>,
     pub overrides: Option<FunctionId>,
@@ -69,11 +68,11 @@ pub struct ClassMethod {
     pub is_constructor: bool,
 }
 
-/// Full representation of a class definition section.
+/// High-level representation of a class definition extracted from Ark metadata.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassDefinition {
-    pub name: TypeId,
-    pub language: StringId,
+    pub name: String,
+    pub language: String,
     pub super_class: Option<TypeId>,
     pub interfaces: Vec<TypeId>,
     pub flags: ClassFlag,
@@ -84,20 +83,20 @@ pub struct ClassDefinition {
     pub metadata: Vec<ClassMetadata>,
 }
 
-/// Type parameter metadata for generic classes and methods.
+/// Type-parameter metadata attached to a class or method.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeParameter {
-    pub name: StringId,
+    pub name: String,
     pub constraint: Option<TypeDescriptor>,
     pub default_type: Option<TypeDescriptor>,
     pub flags: TypeFlag,
 }
 
-/// Arbitrary metadata associated with a class definition.
+/// Additional metadata entries attached to a class definition.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClassMetadata {
     Slots(u16),
-    SourceFile(StringId),
+    SourceFile(String),
     LineRange { start: u32, end: u32 },
     FieldDescriptors(Vec<FieldDescriptor>),
     Extra(Vec<u8>),

@@ -192,8 +192,8 @@ fn generate_rust_code(
     plain: &HashMap<u8, InstructionEntry>,
     prefixed: &HashMap<(u8, u8), InstructionEntry>,
 ) -> std::io::Result<()> {
-    // Write to src/isa_generated.rs so it's included in the build
-    let src_path = PathBuf::from("src/isa_generated.rs");
+    // Write to src/lowlevel/isa_generated.rs so it's included in the build
+    let src_path = PathBuf::from("src/lowlevel/isa_generated.rs");
     let mut file = File::create(&src_path)?;
 
     writeln!(
@@ -208,7 +208,10 @@ fn generate_rust_code(
     writeln!(file, "//! Regenerate with: cargo build")?;
     writeln!(file)?;
 
-    writeln!(file, "use crate::instructions::InstructionFormat;")?;
+    writeln!(
+        file,
+        "use crate::highlevel::instructions::InstructionFormat;"
+    )?;
     writeln!(file)?;
 
     // Generate plain instruction table
@@ -292,7 +295,7 @@ fn generate_rust_code(
     )?;
 
     eprintln!(
-        "Generated {} plain and {} prefixed instruction entries to src/isa_generated.rs",
+        "Generated {} plain and {} prefixed instruction entries to src/lowlevel/isa_generated.rs",
         plain.len(),
         prefixed.len()
     );

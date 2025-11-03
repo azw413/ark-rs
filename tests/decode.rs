@@ -1,7 +1,6 @@
-use ark_rs::abc_bytecode::decode_function_body;
-use ark_rs::instructions::{Operand, RegisterOperand};
-use ark_rs::types::{FieldType, FunctionId, FunctionSignature, PrimitiveType, TypeDescriptor};
-use ark_rs::{abc_binary::BinaryAbcFile, abc_types::AbcMethodItem};
+use ark_rs::lowlevel::bytecode::decode_function_body;
+use ark_rs::lowlevel::{AbcFile, AbcMethodItem, FunctionId};
+use ark_rs::{ArkFunctionSignature, Operand, RegisterOperand};
 
 fn find_method<'a>(methods: &'a [AbcMethodItem], name: &str) -> &'a AbcMethodItem {
     methods
@@ -14,10 +13,7 @@ fn find_method<'a>(methods: &'a [AbcMethodItem], name: &str) -> &'a AbcMethodIte
 fn decode_on_create_matches_reference() {
     let data = std::fs::read("test-data/modules.abc").expect("read modules.abc");
 
-    let signature = FunctionSignature::new(
-        Vec::new(),
-        FieldType::new(TypeDescriptor::Primitive(PrimitiveType::Any)),
-    );
+    let signature = ArkFunctionSignature::new("any");
 
     let function = decode_function_body(&data, 0x1aac, FunctionId::new(0), None, signature)
         .expect("decode onCreate body");
@@ -65,7 +61,7 @@ fn decode_on_create_matches_reference() {
 #[test]
 fn binary_method_index_resolves_code_offsets() {
     let data = std::fs::read("test-data/modules.abc").expect("read modules.abc");
-    let binary = BinaryAbcFile::parse(&data).expect("parse binary abc");
+    let binary = AbcFile::parse(&data).expect("parse binary abc");
     let code_map = binary.method_code_map();
 
     let entry_on_create = find_method(&binary.methods, "#~@0>#onCreate");
@@ -78,10 +74,7 @@ fn binary_method_index_resolves_code_offsets() {
 #[test]
 fn inspect_on_backup_exception_ranges() {
     let data = std::fs::read("test-data/modules.abc").expect("read modules.abc");
-    let signature = FunctionSignature::new(
-        Vec::new(),
-        FieldType::new(TypeDescriptor::Primitive(PrimitiveType::Any)),
-    );
+    let signature = ArkFunctionSignature::new("any");
 
     let function = decode_function_body(&data, 0x1d26, FunctionId::new(0), None, signature)
         .expect("decode onBackup");
