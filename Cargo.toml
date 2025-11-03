@@ -2,6 +2,10 @@
 name = "ark-rs"
 version = "0.1.0"
 edition = "2024"
+repository = "https://github.com/azw413/ark-rs"
+license = "GPL-3"
+description = "A rust crate for reversing HarmonyOS Arkts bytecode files."
+keywords = ["huawei", "harmony", "harmonyos", "ark", "arkts"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
